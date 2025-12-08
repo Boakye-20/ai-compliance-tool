@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #111827;
+    line-height: 1.6;
+}
+
+/* Custom components */
+@layer components {
+    .stat-card {
+        @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow;
+    }
+
+    .nav-tab {
+        @apply flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors;
+    }
+
+    .nav-tab.active {
+        @apply text-primary bg-blue-50;
+    }
+
+    .framework-card {
+        @apply bg-white border border-gray-200 rounded-lg p-4 transition-all;
+    }
+
+    .framework-card:hover {
+        @apply border-gray-300 shadow-sm;
+    }
+
+    .btn-primary {
+        @apply bg-primary hover:bg-primary-dark text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed;
+    }
+
+    .btn-secondary {
+        @apply bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors;
+    }
+}
