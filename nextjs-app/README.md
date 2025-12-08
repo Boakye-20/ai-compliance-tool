@@ -18,6 +18,12 @@ A modern Next.js frontend for the AI Compliance Tool that connects to a FastAPI 
 │   Next.js App   │───►│  FastAPI Backend │
 │  (Port 3000)    │    │   (Port 8000)    │
 └─────────────────┘    └─────────────────┘
+       │
+       │ (proxy via /api/*)
+       ▼
+┌─────────────────┐
+│  FastAPI Backend │
+└─────────────────┘
                               │
                        ┌─────────────────┐
                        │ Python/LangGraph │
@@ -60,7 +66,7 @@ A modern Next.js frontend for the AI Compliance Tool that connects to a FastAPI 
    
    Edit `.env.local` if your backend is not on `localhost:8000`:
    ```
-   NEXT_PUBLIC_API_URL=http://localhost:8000
+   BACKEND_URL=http://localhost:8000
    ```
 
 4. **Run the development server**:
@@ -111,14 +117,14 @@ src/
 
 ### API Integration
 
-The app calls these FastAPI endpoints:
+The app calls these FastAPI endpoints (proxied by Next.js rewrites):
 
-- `POST /analyze` - Upload PDF and get analysis results
-- `GET /report/{job_id}` - Download PDF report
+- `POST /api/analyze` - Upload PDF and get analysis results
+- `GET /api/report/{job_id}` - Download PDF report
 
 Example API call:
 ```typescript
-const response = await fetch(`${API_URL}/analyze`, {
+const response = await fetch('/api/analyze', {
   method: 'POST',
   body: formData, // Contains file + frameworks
 });
@@ -139,7 +145,7 @@ const data = await response.json();
 1. Push to GitHub repository
 2. Connect to Vercel
 3. Set environment variables:
-   - `NEXT_PUBLIC_API_URL=https://your-api-domain.com`
+   - `BACKEND_URL=https://your-api-domain.com` (FastAPI URL)
 4. Deploy
 
 ### Docker
@@ -149,14 +155,14 @@ const data = await response.json();
 docker build -t ai-compliance-frontend .
 
 # Run
-docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://localhost:8000 ai-compliance-frontend
+docker run -p 3000:3000 -e BACKEND_URL=http://localhost:8000 ai-compliance-frontend
 ```
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | FastAPI backend URL | `http://localhost:8000` |
+| `BACKEND_URL` | FastAPI backend URL (used by rewrite proxy) | `http://localhost:8000` |
 
 ## Troubleshooting
 
@@ -164,7 +170,7 @@ docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://localhost:8000 ai-complian
 
 1. **API Connection Failed**
    - Ensure FastAPI backend is running on port 8000
-   - Check `NEXT_PUBLIC_API_URL` environment variable
+   - Check `BACKEND_URL` environment variable
    - Verify CORS is enabled in FastAPI
 
 2. **Upload Not Working**

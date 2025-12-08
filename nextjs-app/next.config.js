@@ -1,11 +1,18 @@
 /** @type {import('next').NextConfig} */
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+
 const nextConfig = {
     experimental: {
         appDir: true,
     },
-    env: {
-        API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:8000',
+    async rewrites() {
+        return [
+            {
+                source: '/api/:path*',
+                destination: `${backendUrl}/:path*`,
+            },
+        ];
     },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

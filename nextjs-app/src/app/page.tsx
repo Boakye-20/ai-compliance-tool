@@ -66,7 +66,7 @@ export default function CompliancePage() {
             formData.append('file', uploadedFile);
             selectedFrameworks.forEach(fw => formData.append('frameworks', fw));
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
+            const response = await fetch(`/api/analyze`, {
                 method: 'POST',
                 body: formData,
             });
@@ -86,7 +86,7 @@ export default function CompliancePage() {
 
     const handleDownloadReport = () => {
         if (!analysis?.job_id) return;
-        const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/report/${analysis.job_id}`;
+        const url = `/api/report/${analysis.job_id}`;
         window.open(url, '_blank');
     };
 

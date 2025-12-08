@@ -1,0 +1,11 @@
+# Exclude frontend and local artifacts from the backend deployment bundle
+nextjs-app/
+.next/
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.streamlit/
+*.log
+.DS_Store
