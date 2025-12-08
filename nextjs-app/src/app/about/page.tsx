@@ -177,7 +177,7 @@ export default function AboutPage() {
                         <div>
                             <h3 className="font-semibold text-gray-900 mb-1">UK ICO AI Principles</h3>
                             <p className="text-gray-600 text-sm">
-                                The ICO's five principles for responsible AI: safety & robustness, fairness & transparency, accountability & governance, contestability & redress, and data protection by design.
+                                The ICO&apos;s five principles for responsible AI: safety & robustness, fairness & transparency, accountability & governance, contestability & redress, and data protection by design.
                                 {' '}
                                 <a
                                     href="https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/artificial-intelligence/"
