@@ -246,9 +246,8 @@ MIT License - see LICENSE file
 
 ## 👤 Author
 
-**PK** - Digital Collections Specialist @ Oakbrook Finance
+**PK** - 
 
-- Built enterprise AI agent (Microsoft Copilot Studio) serving 80+ users
 - BSc Politics, LSE
 - [LinkedIn](https://linkedin.com) | [Portfolio](https://portfolio.com)
 
