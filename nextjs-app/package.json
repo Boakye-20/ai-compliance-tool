@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "next": "14.0.4",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
     "react": "^18",
     "react-dom": "^18",
+    "uuid": "^9.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -23,6 +26,8 @@
   },
   "devDependencies": {
     "eslint": "^8",
-    "eslint-config-next": "14.0.4"
+    "eslint-config-next": "14.0.4",
+    "@types/pdf-parse": "^1.1.1",
+    "@types/uuid": "^9.0.0"
   }
 }
