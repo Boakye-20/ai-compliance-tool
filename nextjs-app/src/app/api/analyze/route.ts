@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { runCompliancePipeline } from '@/lib/backend/graph';
-import { saveJob } from '@/lib/backend/storage';
-import { AnalysisJob, FrameworkCode } from '@/lib/backend/types';
+import { runCompliancePipeline } from '../../../lib/backend/graph';
+import { saveJob } from '../../../lib/backend/storage';
+import { AnalysisJob, FrameworkCode } from '../../../lib/backend/types';
 
 // Allow long-running job (Node runtime, not edge)
 export const maxDuration = 300; // seconds
