@@ -9,6 +9,7 @@
         "types": [
             "node"
         ],
+        "baseUrl": ".",
         "allowJs": true,
         "skipLibCheck": true,
         "strict": true,
