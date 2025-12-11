@@ -23,7 +23,7 @@ CRITICAL SCORING GUIDANCE:
 - Deployment: ${extractedData.deployment_context || 'Unknown'}
 
 **DOCUMENT TEXT:**
-${extractedData.full_text?.slice(0, 25000) || ''}
+${extractedData.full_text?.slice(0, 12000) || ''}
 
 ---
 

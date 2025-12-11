@@ -21,7 +21,7 @@ CRITICAL SCORING GUIDANCE:
 - Human oversight: ${extractedData.has_human_oversight}
 
 **DOCUMENT TEXT:**
-${extractedData.full_text?.slice(0, 25000) || ''}
+${extractedData.full_text?.slice(0, 12000) || ''}
 
 ---
 

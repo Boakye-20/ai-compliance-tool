@@ -42,29 +42,51 @@ export async function runCompliancePipeline(
         state.selected_frameworks = routeFrameworks(state.extracted_data, selectedFrameworks);
         log(`✅ Frameworks: ${state.selected_frameworks.join(', ')}`);
 
-        // Analyze (sequential to avoid Perplexity rate limiting)
+        if (!state.extracted_data) {
+            throw new Error('Extracted data is missing after PDF extraction');
+        }
+
+        const extracted = state.extracted_data;
+
+        // Analyze in small batches (max 2 concurrent) to balance speed and rate limits
+        const tasks: Array<() => Promise<void>> = [];
+
         if (state.selected_frameworks.includes('ICO')) {
-            log('Analyzing ICO compliance...');
-            state.ico_result = await analyzeICOCompliance(state.extracted_data);
-            log(`ICO: ${state.ico_result.score}% (${state.ico_result.critical_gaps_count} critical gaps)`);
+            tasks.push(async () => {
+                log('Analyzing ICO compliance...');
+                state.ico_result = await analyzeICOCompliance(extracted);
+                log(`ICO: ${state.ico_result.score}% (${state.ico_result.critical_gaps_count} critical gaps)`);
+            });
         }
 
         if (state.selected_frameworks.includes('DPA')) {
-            log('Analyzing DPA/GDPR compliance...');
-            state.dpa_result = await analyzeDPACompliance(state.extracted_data);
-            log(`DPA: ${state.dpa_result.score}% (${state.dpa_result.critical_gaps_count} critical gaps)`);
+            tasks.push(async () => {
+                log('Analyzing DPA/GDPR compliance...');
+                state.dpa_result = await analyzeDPACompliance(extracted);
+                log(`DPA: ${state.dpa_result.score}% (${state.dpa_result.critical_gaps_count} critical gaps)`);
+            });
         }
 
         if (state.selected_frameworks.includes('EU_AI_ACT')) {
-            log('Analyzing EU AI Act compliance...');
-            state.eu_act_result = await analyzeEUActCompliance(state.extracted_data);
-            log(`EU AI Act: ${state.eu_act_result.score}% - ${state.eu_act_result.risk_tier}`);
+            tasks.push(async () => {
+                log('Analyzing EU AI Act compliance...');
+                state.eu_act_result = await analyzeEUActCompliance(extracted);
+                log(`EU AI Act: ${state.eu_act_result.score}% - ${state.eu_act_result.risk_tier}`);
+            });
         }
 
         if (state.selected_frameworks.includes('ISO_42001')) {
-            log('Analyzing ISO 42001 compliance...');
-            state.iso_result = await analyzeISOCompliance(state.extracted_data);
-            log(`ISO 42001: ${state.iso_result.score}% (${state.iso_result.critical_gaps_count} critical gaps)`);
+            tasks.push(async () => {
+                log('Analyzing ISO 42001 compliance...');
+                state.iso_result = await analyzeISOCompliance(extracted);
+                log(`ISO 42001: ${state.iso_result.score}% (${state.iso_result.critical_gaps_count} critical gaps)`);
+            });
+        }
+
+        const batchSize = 2;
+        for (let i = 0; i < tasks.length; i += batchSize) {
+            const batch = tasks.slice(i, i + batchSize).map((fn) => fn());
+            await Promise.all(batch);
         }
 
         // Synthesize

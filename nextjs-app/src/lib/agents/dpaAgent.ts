@@ -22,7 +22,7 @@ CRITICAL SCORING GUIDANCE:
 - Personal data: ${extractedData.has_personal_data}
 
 **DOCUMENT TEXT:**
-${extractedData.full_text?.slice(0, 25000) || ''}
+${extractedData.full_text?.slice(0, 12000) || ''}
 
 ---
 
