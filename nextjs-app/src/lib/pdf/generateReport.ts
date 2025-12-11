@@ -31,16 +31,17 @@ const CONFIG = {
         tiny: 8,
     },
     colors: {
-        primary: rgb(0.055, 0.647, 0.913),      // Sky blue
-        secondary: rgb(0.067, 0.094, 0.153),    // Dark navy
-        text: rgb(0.2, 0.2, 0.2),               // Dark gray
-        textLight: rgb(0.4, 0.4, 0.4),          // Medium gray
-        textMuted: rgb(0.6, 0.6, 0.6),          // Light gray
-        success: rgb(0.063, 0.725, 0.506),      // Green
-        warning: rgb(0.961, 0.62, 0.043),       // Amber
-        danger: rgb(0.863, 0.149, 0.149),       // Red
-        background: rgb(0.97, 0.97, 0.97),      // Light background
-        border: rgb(0.85, 0.85, 0.85),          // Border gray
+        primary: rgb(0.055, 0.647, 0.913),
+        secondary: rgb(0.067, 0.094, 0.153),
+        text: rgb(0.2, 0.2, 0.2),
+        textLight: rgb(0.4, 0.4, 0.4),
+        textMuted: rgb(0.6, 0.6, 0.6),
+        success: rgb(0.063, 0.725, 0.506),
+        warning: rgb(0.961, 0.62, 0.043),
+        danger: rgb(0.863, 0.149, 0.149),
+        background: rgb(0.97, 0.97, 0.97),
+        backgroundWarm: rgb(1, 0.98, 0.95),
+        border: rgb(0.85, 0.85, 0.85),
         white: rgb(1, 1, 1),
     },
     spacing: {
@@ -84,6 +85,12 @@ function sanitizeText(text: unknown): string {
         .replace(/\u00a0/g, ' ')
         .replace(/[^\x20-\x7E\n\t]/g, '')
         .trim();
+}
+
+function truncateText(text: string, maxLength: number): string {
+    const clean = sanitizeText(text);
+    if (clean.length <= maxLength) return clean;
+    return clean.slice(0, maxLength - 3).trim() + '...';
 }
 
 function wrapText(text: string, maxWidth: number, fontSize: number, font: PDFFont): string[] {
@@ -150,6 +157,13 @@ function formatDate(date: Date): string {
     });
 }
 
+function getScoreRating(score: number): string {
+    if (score >= 80) return 'Strong';
+    if (score >= 60) return 'Moderate';
+    if (score >= 40) return 'Weak';
+    return 'Critical';
+}
+
 // ============================================================================
 // PAGE MANAGEMENT
 // ============================================================================
@@ -206,11 +220,7 @@ function drawText(
     return ctx;
 }
 
-function drawHeading(
-    ctx: PageContext,
-    text: string,
-    level: 1 | 2 | 3 = 2
-): PageContext {
+function drawHeading(ctx: PageContext, text: string, level: 1 | 2 | 3 = 2): PageContext {
     const sizes = {
         1: CONFIG.fonts.heading1,
         2: CONFIG.fonts.heading2,
@@ -239,7 +249,6 @@ function drawBulletPoint(ctx: PageContext, text: string, indent: number = 0): Pa
 
     ctx = ensureSpace(ctx, CONFIG.fonts.body + CONFIG.spacing.line);
 
-    // Draw bullet
     ctx.page.drawText('•', {
         x: bulletX,
         y: ctx.y,
@@ -248,7 +257,6 @@ function drawBulletPoint(ctx: PageContext, text: string, indent: number = 0): Pa
         color: CONFIG.colors.primary,
     });
 
-    // Draw text
     const lines = wrapText(text, maxWidth, CONFIG.fonts.body, ctx.fonts.regular);
     for (let i = 0; i < lines.length; i++) {
         if (i > 0) ctx = ensureSpace(ctx, CONFIG.fonts.body + CONFIG.spacing.line);
@@ -290,7 +298,6 @@ function drawScoreBox(
 
     ctx = ensureSpace(ctx, boxHeight + 10);
 
-    // Background
     ctx.page.drawRectangle({
         x,
         y: ctx.y - boxHeight,
@@ -301,7 +308,6 @@ function drawScoreBox(
         borderWidth: 1,
     });
 
-    // Score
     ctx.page.drawText(`${score}%`, {
         x: x + width / 2 - ctx.fonts.bold.widthOfTextAtSize(`${score}%`, 28) / 2,
         y: ctx.y - 35,
@@ -310,7 +316,6 @@ function drawScoreBox(
         color: scoreColor,
     });
 
-    // Label
     const labelWidth = ctx.fonts.regular.widthOfTextAtSize(label, CONFIG.fonts.small);
     ctx.page.drawText(label, {
         x: x + width / 2 - labelWidth / 2,
@@ -323,12 +328,7 @@ function drawScoreBox(
     return ctx;
 }
 
-function drawStatusBadge(
-    ctx: PageContext,
-    status: ComplianceStatus,
-    x: number,
-    y: number
-): void {
+function drawStatusBadge(ctx: PageContext, status: ComplianceStatus, x: number, y: number): void {
     const text = formatStatus(status);
     const color = getStatusColor(status);
     const padding = 4;
@@ -357,7 +357,6 @@ function drawStatusBadge(
 // ============================================================================
 
 function drawHeader(ctx: PageContext): PageContext {
-    // Logo / Brand
     ctx.page.drawText('AI GOVERNANCE HUB', {
         x: CONFIG.page.margin,
         y: ctx.y,
@@ -399,7 +398,7 @@ function drawDocumentInfo(ctx: PageContext, extractedData: ExtractedData, synthe
             font: ctx.fonts.bold,
             color: CONFIG.colors.textLight,
         });
-        ctx.page.drawText(sanitizeText(value), {
+        ctx.page.drawText(truncateText(value, 70), {
             x: CONFIG.page.margin + 120,
             y: ctx.y,
             size: CONFIG.fonts.body,
@@ -413,17 +412,66 @@ function drawDocumentInfo(ctx: PageContext, extractedData: ExtractedData, synthe
     return ctx;
 }
 
-function drawExecutiveSummary(ctx: PageContext, synthesis: Synthesis): PageContext {
+function extractTopIssues(
+    icoResult: ICOResult | null,
+    dpaResult: DPAResult | null,
+    euActResult: EUActResult | null,
+    isoResult: ISOResult | null
+): string[] {
+    const issues: string[] = [];
+
+    // Collect NOT_MET principles
+    const checkPrinciple = (name: string, result: PrincipleResult | undefined) => {
+        if (result?.status === 'NOT_MET' && result.gap && result.gap !== 'none') {
+            issues.push(name);
+        }
+    };
+
+    if (icoResult) {
+        checkPrinciple('Contestability & redress mechanisms', icoResult.principle_4_contestability);
+        checkPrinciple('Safety & security measures', icoResult.principle_1_safety);
+        checkPrinciple('Fairness & bias testing', icoResult.principle_2_fairness);
+    }
+
+    if (dpaResult) {
+        checkPrinciple('Transparency obligations (Art. 13/14)', dpaResult.article_13_transparency);
+        checkPrinciple('Automated decision-making safeguards (Art. 22)', dpaResult.article_22_adm);
+    }
+
+    // Add from critical gaps
+    const allResults = [icoResult, dpaResult, euActResult, isoResult].filter(Boolean);
+    for (const result of allResults) {
+        if (result?.critical_gaps) {
+            for (const gap of result.critical_gaps.slice(0, 2)) {
+                const shortGap = truncateText(gap, 50);
+                if (!issues.some((i) => i.toLowerCase().includes(shortGap.toLowerCase().slice(0, 20)))) {
+                    issues.push(shortGap);
+                }
+            }
+        }
+    }
+
+    return issues.slice(0, 3);
+}
+
+function drawExecutiveSummary(
+    ctx: PageContext,
+    synthesis: Synthesis,
+    icoResult: ICOResult | null,
+    dpaResult: DPAResult | null,
+    euActResult: EUActResult | null,
+    isoResult: ISOResult | null
+): PageContext {
     ctx = drawHeading(ctx, 'Executive Summary', 1);
 
-    // Score boxes
-    const boxWidth = 120;
+    // Score boxes row
+    const boxWidth = 110;
     const boxSpacing = 15;
     const startX = CONFIG.page.margin;
 
     ctx = drawScoreBox(ctx, 'UK ALIGNMENT', synthesis.uk_alignment_score, startX, boxWidth);
 
-    // Critical gaps indicator
+    // Critical gaps box
     const gapsX = startX + boxWidth + boxSpacing;
     const gapsBoxHeight = 70;
 
@@ -454,9 +502,91 @@ function drawExecutiveSummary(ctx: PageContext, synthesis: Synthesis): PageConte
         color: CONFIG.colors.textLight,
     });
 
+    // Rating box
+    const ratingX = gapsX + boxWidth + boxSpacing;
+    const rating = getScoreRating(synthesis.uk_alignment_score);
+    const ratingColor = getScoreColor(synthesis.uk_alignment_score);
+
+    ctx.page.drawRectangle({
+        x: ratingX,
+        y: ctx.y - gapsBoxHeight,
+        width: boxWidth,
+        height: gapsBoxHeight,
+        color: CONFIG.colors.background,
+        borderColor: CONFIG.colors.border,
+        borderWidth: 1,
+    });
+
+    ctx.page.drawText(rating, {
+        x: ratingX + boxWidth / 2 - ctx.fonts.bold.widthOfTextAtSize(rating, 18) / 2,
+        y: ctx.y - 38,
+        size: 18,
+        font: ctx.fonts.bold,
+        color: ratingColor,
+    });
+
+    const ratingLabel = 'COMPLIANCE';
+    ctx.page.drawText(ratingLabel, {
+        x: ratingX + boxWidth / 2 - ctx.fonts.regular.widthOfTextAtSize(ratingLabel, CONFIG.fonts.small) / 2,
+        y: ctx.y - 55,
+        size: CONFIG.fonts.small,
+        font: ctx.fonts.regular,
+        color: CONFIG.colors.textLight,
+    });
+
     ctx.y -= 85;
 
-    // Summary text
+    // Top issues callout
+    const topIssues = extractTopIssues(icoResult, dpaResult, euActResult, isoResult);
+
+    if (topIssues.length > 0) {
+        ctx = ensureSpace(ctx, 60);
+
+        // Key risks box
+        const boxY = ctx.y;
+        const risksBoxHeight = 20 + topIssues.length * 16;
+
+        ctx.page.drawRectangle({
+            x: CONFIG.page.margin,
+            y: boxY - risksBoxHeight,
+            width: CONFIG.page.width - 2 * CONFIG.page.margin,
+            height: risksBoxHeight,
+            color: rgb(1, 0.97, 0.95),
+            borderColor: CONFIG.colors.warning,
+            borderWidth: 1,
+        });
+
+        // Left accent bar
+        ctx.page.drawRectangle({
+            x: CONFIG.page.margin,
+            y: boxY - risksBoxHeight,
+            width: 4,
+            height: risksBoxHeight,
+            color: CONFIG.colors.warning,
+        });
+
+        ctx.page.drawText('KEY RISKS:', {
+            x: CONFIG.page.margin + 15,
+            y: boxY - 14,
+            size: CONFIG.fonts.small,
+            font: ctx.fonts.bold,
+            color: CONFIG.colors.warning,
+        });
+
+        for (let i = 0; i < topIssues.length; i++) {
+            ctx.page.drawText(`• ${topIssues[i]}`, {
+                x: CONFIG.page.margin + 15,
+                y: boxY - 30 - i * 14,
+                size: CONFIG.fonts.small,
+                font: ctx.fonts.regular,
+                color: CONFIG.colors.text,
+            });
+        }
+
+        ctx.y -= risksBoxHeight + 15;
+    }
+
+    // Summary paragraph
     ctx = drawText(ctx, synthesis.summary, {
         size: CONFIG.fonts.body,
         color: CONFIG.colors.text,
@@ -467,18 +597,83 @@ function drawExecutiveSummary(ctx: PageContext, synthesis: Synthesis): PageConte
     return ctx;
 }
 
+function drawWhatThisMeans(ctx: PageContext, synthesis: Synthesis): PageContext {
+    ctx = ensureSpace(ctx, 100);
+
+    // Section with background
+    const boxHeight = 80;
+
+    ctx.page.drawRectangle({
+        x: CONFIG.page.margin,
+        y: ctx.y - boxHeight,
+        width: CONFIG.page.width - 2 * CONFIG.page.margin,
+        height: boxHeight,
+        color: CONFIG.colors.backgroundWarm,
+        borderColor: CONFIG.colors.border,
+        borderWidth: 1,
+    });
+
+    // Left accent
+    ctx.page.drawRectangle({
+        x: CONFIG.page.margin,
+        y: ctx.y - boxHeight,
+        width: 4,
+        height: boxHeight,
+        color: CONFIG.colors.primary,
+    });
+
+    ctx.page.drawText('What This Means', {
+        x: CONFIG.page.margin + 15,
+        y: ctx.y - 18,
+        size: CONFIG.fonts.heading3,
+        font: ctx.fonts.bold,
+        color: CONFIG.colors.secondary,
+    });
+
+    // Generate plain-English explanation
+    let explanation: string;
+    const score = synthesis.uk_alignment_score;
+
+    if (score >= 70) {
+        explanation =
+            'This system demonstrates strong alignment with UK AI governance requirements. Minor gaps should be addressed before deployment, but overall regulatory risk is low.';
+    } else if (score >= 50) {
+        explanation =
+            'This system has moderate compliance gaps that require attention before deployment. Without remediation, you may face regulatory scrutiny, enforcement action, or reputational risk.';
+    } else {
+        explanation =
+            'This system has significant compliance gaps that pose material regulatory risk. Deployment in current state could result in enforcement action, fines, or mandatory operational changes.';
+    }
+
+    const lines = wrapText(explanation, CONFIG.page.width - 2 * CONFIG.page.margin - 30, CONFIG.fonts.body, ctx.fonts.regular);
+    let textY = ctx.y - 38;
+
+    for (const line of lines) {
+        ctx.page.drawText(line, {
+            x: CONFIG.page.margin + 15,
+            y: textY,
+            size: CONFIG.fonts.body,
+            font: ctx.fonts.regular,
+            color: CONFIG.colors.text,
+        });
+        textY -= CONFIG.fonts.body + 5;
+    }
+
+    ctx.y -= boxHeight + 20;
+    return ctx;
+}
+
 function drawFrameworkScores(ctx: PageContext, synthesis: Synthesis): PageContext {
     ctx = drawHeading(ctx, 'Framework Scores', 2);
 
     const barHeight = 24;
-    const barMaxWidth = 300;
-    const labelWidth = 120;
+    const barMaxWidth = 280;
+    const labelWidth = 130;
 
     for (const [framework, score] of Object.entries(synthesis.framework_scores)) {
         ctx = ensureSpace(ctx, barHeight + 15);
 
-        // Label
-        ctx.page.drawText(sanitizeText(framework), {
+        ctx.page.drawText(truncateText(framework, 22), {
             x: CONFIG.page.margin,
             y: ctx.y - barHeight / 2 + 4,
             size: CONFIG.fonts.body,
@@ -486,7 +681,6 @@ function drawFrameworkScores(ctx: PageContext, synthesis: Synthesis): PageContex
             color: CONFIG.colors.text,
         });
 
-        // Background bar
         const barX = CONFIG.page.margin + labelWidth;
         ctx.page.drawRectangle({
             x: barX,
@@ -496,17 +690,17 @@ function drawFrameworkScores(ctx: PageContext, synthesis: Synthesis): PageContex
             color: CONFIG.colors.background,
         });
 
-        // Score bar
         const scoreWidth = (score / 100) * barMaxWidth;
-        ctx.page.drawRectangle({
-            x: barX,
-            y: ctx.y - barHeight,
-            width: scoreWidth,
-            height: barHeight,
-            color: getScoreColor(score),
-        });
+        if (scoreWidth > 0) {
+            ctx.page.drawRectangle({
+                x: barX,
+                y: ctx.y - barHeight,
+                width: scoreWidth,
+                height: barHeight,
+                color: getScoreColor(score),
+            });
+        }
 
-        // Score text
         ctx.page.drawText(`${score}%`, {
             x: barX + barMaxWidth + 10,
             y: ctx.y - barHeight / 2 + 4,
@@ -527,11 +721,10 @@ function drawPriorityActions(ctx: PageContext, actions: string[]): PageContext {
 
     ctx = drawHeading(ctx, 'Priority Actions', 2);
 
-    for (let i = 0; i < actions.length; i++) {
+    for (let i = 0; i < Math.min(actions.length, 5); i++) {
         const action = actions[i];
         ctx = ensureSpace(ctx, 30);
 
-        // Number badge
         const numText = `${i + 1}`;
         const numX = CONFIG.page.margin;
         ctx.page.drawRectangle({
@@ -549,7 +742,6 @@ function drawPriorityActions(ctx: PageContext, actions: string[]): PageContext {
             color: CONFIG.colors.white,
         });
 
-        // Action text
         const textX = numX + 28;
         const maxWidth = CONFIG.page.width - CONFIG.page.margin - textX;
         const lines = wrapText(action, maxWidth, CONFIG.fonts.body, ctx.fonts.regular);
@@ -573,106 +765,123 @@ function drawPriorityActions(ctx: PageContext, actions: string[]): PageContext {
     return ctx;
 }
 
-function drawFrameworkDetail(ctx: PageContext, fw: FrameworkDisplay): PageContext {
-    if (!fw.result) return ctx;
+function drawFrameworkHeader(ctx: PageContext, name: string, score: number): PageContext {
+    ctx = ensureSpace(ctx, 50);
 
-    ctx = ensureSpace(ctx, 80);
+    const headerHeight = 36;
 
-    // Framework header with score
+    // Background with left accent bar
     ctx.page.drawRectangle({
         x: CONFIG.page.margin,
-        y: ctx.y - 35,
+        y: ctx.y - headerHeight,
         width: CONFIG.page.width - 2 * CONFIG.page.margin,
-        height: 40,
+        height: headerHeight,
         color: CONFIG.colors.background,
     });
 
-    ctx.page.drawText(fw.name, {
-        x: CONFIG.page.margin + 10,
-        y: ctx.y - 22,
+    // Coloured left border
+    ctx.page.drawRectangle({
+        x: CONFIG.page.margin,
+        y: ctx.y - headerHeight,
+        width: 5,
+        height: headerHeight,
+        color: getScoreColor(score),
+    });
+
+    // Framework name
+    ctx.page.drawText(name, {
+        x: CONFIG.page.margin + 15,
+        y: ctx.y - 23,
         size: CONFIG.fonts.heading2,
         font: ctx.fonts.bold,
         color: CONFIG.colors.secondary,
     });
 
-    const scoreText = `${fw.result.score}%`;
-    const scoreX = CONFIG.page.width - CONFIG.page.margin - 60;
+    // Score on right
+    const scoreText = `${score}%`;
+    const scoreWidth = ctx.fonts.bold.widthOfTextAtSize(scoreText, CONFIG.fonts.heading2);
     ctx.page.drawText(scoreText, {
-        x: scoreX,
-        y: ctx.y - 22,
+        x: CONFIG.page.width - CONFIG.page.margin - scoreWidth - 15,
+        y: ctx.y - 23,
         size: CONFIG.fonts.heading2,
         font: ctx.fonts.bold,
-        color: getScoreColor(fw.result.score),
+        color: getScoreColor(score),
     });
 
-    ctx.y -= 50;
+    ctx.y -= headerHeight + 15;
+    return ctx;
+}
 
-    // Summary
-    if (fw.result.compliance_summary) {
-        ctx = drawText(ctx, fw.result.compliance_summary, {
-            size: CONFIG.fonts.body,
-            color: CONFIG.colors.textLight,
-            lineHeight: CONFIG.fonts.body + 5,
+function drawRequirementsTable(ctx: PageContext, principles: { name: string; result: PrincipleResult | undefined }[]): PageContext {
+    ctx = ensureSpace(ctx, 25);
+
+    ctx.page.drawText('Requirements:', {
+        x: CONFIG.page.margin,
+        y: ctx.y,
+        size: CONFIG.fonts.heading3,
+        font: ctx.fonts.bold,
+        color: CONFIG.colors.secondary,
+    });
+    ctx.y -= 18;
+
+    for (const principle of principles) {
+        if (!principle.result) continue;
+
+        ctx = ensureSpace(ctx, 18);
+
+        // Requirement name (truncated)
+        ctx.page.drawText(truncateText(principle.name, 35), {
+            x: CONFIG.page.margin + 5,
+            y: ctx.y,
+            size: CONFIG.fonts.small,
+            font: ctx.fonts.regular,
+            color: CONFIG.colors.text,
         });
-        ctx.y -= 10;
+
+        // Status badge
+        drawStatusBadge(ctx, principle.result.status, CONFIG.page.margin + 220, ctx.y);
+
+        ctx.y -= 16;
     }
 
-    // Principles / Requirements table (if available)
-    if (fw.principles && fw.principles.length > 0) {
-        ctx = ensureSpace(ctx, 25);
-        ctx.page.drawText('Requirements Assessment:', {
-            x: CONFIG.page.margin,
-            y: ctx.y,
-            size: CONFIG.fonts.heading3,
-            font: ctx.fonts.bold,
-            color: CONFIG.colors.secondary,
-        });
-        ctx.y -= 20;
+    ctx.y -= 10;
+    return ctx;
+}
 
-        for (const principle of fw.principles) {
-            if (!principle.result) continue;
+function drawFrameworkDetail(ctx: PageContext, fw: FrameworkDisplay): PageContext {
+    if (!fw.result || fw.result.score === 0) return ctx;
 
-            ctx = ensureSpace(ctx, 20);
+    ctx = drawFrameworkHeader(ctx, fw.name, fw.result.score);
 
-            // Principle name
-            ctx.page.drawText(sanitizeText(principle.name), {
-                x: CONFIG.page.margin + 5,
+    // Summary (truncated to 2 lines max)
+    if (fw.result.compliance_summary) {
+        const summaryLines = wrapText(
+            fw.result.compliance_summary,
+            CONFIG.page.width - 2 * CONFIG.page.margin,
+            CONFIG.fonts.body,
+            ctx.fonts.regular
+        ).slice(0, 3);
+
+        for (const line of summaryLines) {
+            ctx = ensureSpace(ctx, CONFIG.fonts.body + 5);
+            ctx.page.drawText(line, {
+                x: CONFIG.page.margin,
                 y: ctx.y,
-                size: CONFIG.fonts.small,
+                size: CONFIG.fonts.body,
                 font: ctx.fonts.regular,
-                color: CONFIG.colors.text,
+                color: CONFIG.colors.textLight,
             });
-
-            // Status badge
-            drawStatusBadge(ctx, principle.result.status, CONFIG.page.margin + 200, ctx.y);
-
-            ctx.y -= 18;
-
-            // Gap (if exists)
-            if (principle.result.gap && principle.result.gap !== 'none' && principle.result.gap !== 'N/A') {
-                const gapLines = wrapText(
-                    `Gap: ${principle.result.gap}`,
-                    CONFIG.page.width - 2 * CONFIG.page.margin - 20,
-                    CONFIG.fonts.tiny,
-                    ctx.fonts.regular
-                );
-                for (const line of gapLines) {
-                    ctx = ensureSpace(ctx, CONFIG.fonts.tiny + 4);
-                    ctx.page.drawText(line, {
-                        x: CONFIG.page.margin + 15,
-                        y: ctx.y,
-                        size: CONFIG.fonts.tiny,
-                        font: ctx.fonts.regular,
-                        color: CONFIG.colors.danger,
-                    });
-                    ctx.y -= CONFIG.fonts.tiny + 4;
-                }
-            }
+            ctx.y -= CONFIG.fonts.body + 5;
         }
         ctx.y -= 10;
     }
 
-    // Strengths
+    // Requirements table (compact)
+    if (fw.principles && fw.principles.length > 0) {
+        ctx = drawRequirementsTable(ctx, fw.principles);
+    }
+
+    // Strengths (max 2)
     if (fw.result.strengths && fw.result.strengths.length > 0) {
         ctx = ensureSpace(ctx, 25);
         ctx.page.drawText('Strengths', {
@@ -682,14 +891,14 @@ function drawFrameworkDetail(ctx: PageContext, fw: FrameworkDisplay): PageContex
             font: ctx.fonts.bold,
             color: CONFIG.colors.success,
         });
-        ctx.y -= 18;
+        ctx.y -= 16;
 
-        for (const strength of fw.result.strengths.slice(0, 4)) {
-            ctx = drawBulletPoint(ctx, strength);
+        for (const strength of fw.result.strengths.slice(0, 2)) {
+            ctx = drawBulletPoint(ctx, truncateText(strength, 120));
         }
     }
 
-    // Critical Gaps
+    // Critical Gaps (max 2)
     if (fw.result.critical_gaps && fw.result.critical_gaps.length > 0) {
         ctx = ensureSpace(ctx, 25);
         ctx.page.drawText('Critical Gaps', {
@@ -699,14 +908,80 @@ function drawFrameworkDetail(ctx: PageContext, fw: FrameworkDisplay): PageContex
             font: ctx.fonts.bold,
             color: CONFIG.colors.danger,
         });
-        ctx.y -= 18;
+        ctx.y -= 16;
 
-        for (const gap of fw.result.critical_gaps.slice(0, 4)) {
-            ctx = drawBulletPoint(ctx, gap);
+        for (const gap of fw.result.critical_gaps.slice(0, 2)) {
+            ctx = drawBulletPoint(ctx, truncateText(gap, 120));
         }
     }
 
     ctx.y -= CONFIG.spacing.section;
+    return ctx;
+}
+
+function drawDetailedFindings(ctx: PageContext, frameworks: FrameworkDisplay[]): PageContext {
+    // Check if we have any detailed gaps to show
+    const hasDetailedGaps = frameworks.some(
+        (fw) =>
+            fw.principles?.some((p) => p.result?.gap && p.result.gap !== 'none' && p.result.gap.length > 50) ||
+            (fw.result?.critical_gaps && fw.result.critical_gaps.some((g) => g.length > 50))
+    );
+
+    if (!hasDetailedGaps) return ctx;
+
+    ctx = createNewPage(ctx);
+    ctx = drawHeading(ctx, 'Detailed Findings', 1);
+
+    for (const fw of frameworks) {
+        if (!fw.result || fw.result.score === 0) continue;
+
+        // Check if this framework has detailed findings
+        const hasFindings =
+            fw.principles?.some((p) => p.result?.gap && p.result.gap !== 'none' && p.result.gap.length > 30) ||
+            (fw.result.critical_gaps && fw.result.critical_gaps.length > 0);
+
+        if (!hasFindings) continue;
+
+        ctx = ensureSpace(ctx, 40);
+        ctx.page.drawText(fw.shortName, {
+            x: CONFIG.page.margin,
+            y: ctx.y,
+            size: CONFIG.fonts.heading2,
+            font: ctx.fonts.bold,
+            color: CONFIG.colors.primary,
+        });
+        ctx.y -= 22;
+
+        // Full gap details from principles
+        if (fw.principles) {
+            for (const principle of fw.principles) {
+                if (!principle.result?.gap || principle.result.gap === 'none' || principle.result.gap === 'N/A') continue;
+
+                ctx = ensureSpace(ctx, 40);
+
+                ctx.page.drawText(principle.name, {
+                    x: CONFIG.page.margin,
+                    y: ctx.y,
+                    size: CONFIG.fonts.body,
+                    font: ctx.fonts.bold,
+                    color: CONFIG.colors.text,
+                });
+                ctx.y -= 14;
+
+                ctx = drawText(ctx, principle.result.gap, {
+                    size: CONFIG.fonts.small,
+                    color: CONFIG.colors.textLight,
+                    x: CONFIG.page.margin + 10,
+                    maxWidth: CONFIG.page.width - 2 * CONFIG.page.margin - 10,
+                });
+
+                ctx.y -= 8;
+            }
+        }
+
+        ctx.y -= 15;
+    }
+
     return ctx;
 }
 
@@ -716,7 +991,6 @@ function drawFooters(ctx: PageContext): void {
     for (let i = 0; i < totalPages; i++) {
         const page = ctx.doc.getPage(i);
 
-        // Footer line
         page.drawLine({
             start: { x: CONFIG.page.margin, y: 35 },
             end: { x: CONFIG.page.width - CONFIG.page.margin, y: 35 },
@@ -724,7 +998,6 @@ function drawFooters(ctx: PageContext): void {
             color: CONFIG.colors.border,
         });
 
-        // Page number
         const pageText = `Page ${i + 1} of ${totalPages}`;
         page.drawText(pageText, {
             x: CONFIG.page.margin,
@@ -734,7 +1007,6 @@ function drawFooters(ctx: PageContext): void {
             color: CONFIG.colors.textMuted,
         });
 
-        // Branding
         const brandText = 'AI Governance Hub | Compliance Assessment';
         const brandWidth = ctx.fonts.regular.widthOfTextAtSize(brandText, CONFIG.fonts.tiny);
         page.drawText(brandText, {
@@ -772,17 +1044,18 @@ export async function generateReport(
         fonts: { regular, bold },
     };
 
-    // Build report sections
+    // Page 1: Executive Summary
     ctx = drawHeader(ctx);
     ctx = drawHorizontalRule(ctx);
     ctx = drawDocumentInfo(ctx, extractedData, synthesis);
-    ctx = drawExecutiveSummary(ctx, synthesis);
+    ctx = drawExecutiveSummary(ctx, synthesis, icoResult, dpaResult, euActResult, isoResult);
+    ctx = drawWhatThisMeans(ctx, synthesis);
     ctx = drawFrameworkScores(ctx, synthesis);
     ctx = drawPriorityActions(ctx, synthesis.priority_actions);
 
-    // Detailed framework analysis
+    // Page 2+: Framework Details
     ctx = drawHorizontalRule(ctx);
-    ctx = drawHeading(ctx, 'Detailed Framework Analysis', 1);
+    ctx = drawHeading(ctx, 'Framework Analysis', 1);
 
     const frameworks: FrameworkDisplay[] = [
         {
@@ -814,12 +1087,12 @@ export async function generateReport(
         },
         {
             name: 'EU AI Act',
-            shortName: 'EU',
+            shortName: 'EU AI Act',
             result: euActResult,
         },
         {
             name: 'ISO/IEC 42001:2023',
-            shortName: 'ISO',
+            shortName: 'ISO 42001',
             result: isoResult,
             principles: isoResult
                 ? [
@@ -833,12 +1106,13 @@ export async function generateReport(
     ];
 
     for (const fw of frameworks) {
-        if (fw.result && fw.result.score > 0) {
-            ctx = drawFrameworkDetail(ctx, fw);
-        }
+        ctx = drawFrameworkDetail(ctx, fw);
     }
 
-    // Add footers to all pages
+    // Final page: Detailed Findings (full gap text)
+    ctx = drawDetailedFindings(ctx, frameworks);
+
+    // Add footers
     drawFooters(ctx);
 
     return doc.save();
