@@ -3,65 +3,69 @@ import { callPerplexity, parseJsonResponse } from '../llm/perplexityClient';
 
 function getICOPrompt(extractedData: ExtractedData): string {
     const docType = extractedData.document_type || 'SYSTEM_SPEC';
-    const topicsCovered = extractedData.compliance_topics_covered || [];
 
     return `
-You are a UK ICO (Information Commissioner's Office) AI compliance specialist.
+You are a UK ICO AI compliance specialist analyzing against the 5 ICO AI principles.
 
-**DOCUMENT TYPE: ${docType}**
+TASK: Create a JSON object with your analysis - NO TEXT before or after the JSON object.
 
-CRITICAL SCORING GUIDANCE:
-- If document_type is "GUIDANCE" or "STRATEGY": Score based on whether it RECOMMENDS/COVERS the right practices. A playbook that discusses safety, fairness, accountability etc. should score HIGH.
-- If document_type is "SYSTEM_SPEC" or "ASSESSMENT": Score based on whether it DEMONSTRATES specific compliance for a particular system.
+Document: ${docType} - ${extractedData.use_case || 'Unknown'}
 
-For GUIDANCE documents: Look for sections discussing, recommending, or providing frameworks for each principle.
-For SYSTEM_SPEC documents: Look for specific implementations, concrete evidence, named controls.
-
-**DOCUMENT DETAILS:**
-- Document type: ${docType}
-- Topics already identified as covered: ${topicsCovered.length > 0 ? topicsCovered.join(', ') : 'None identified'}
-- Use case: ${extractedData.use_case || 'Unknown'}
-- System type: ${extractedData.system_type || 'Unknown'}
-- Data types: ${extractedData.data_types?.join(', ') || 'None'}
-- Personal data: ${extractedData.has_personal_data}
-- Biometric data: ${extractedData.has_biometric_data}
-- Human oversight: ${extractedData.has_human_oversight}
-
-**DOCUMENT TEXT:**
-${extractedData.full_text?.slice(0, 12000) || ''}
-
----
-
-Analyze against the 5 ICO AI principles:
-
+Focus on these 5 ICO AI principles:
 1. Safety, Security & Robustness
 2. Fairness & Transparency
 3. Accountability & Governance
 4. Contestability & Redress
 5. Data Minimization & Privacy
 
-For each principle, find SPECIFIC QUOTES or SECTIONS from the document that address it.
+Document excerpt:
+${extractedData.full_text?.slice(0, 6000) || ''}
 
-Return ONLY valid JSON with this exact structure (no markdown, no text before or after):
+Return a valid JSON object with this structure:
 {
   "document_type_detected": "${docType}",
-  "principle_1_safety": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
-  "principle_2_fairness": { "status": "PARTIALLY_MET", "evidence_found": ["quote"], "gap": "description", "priority": "MEDIUM" },
-  "principle_3_accountability": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
-  "principle_4_contestability": { "status": "NOT_MET", "evidence_found": [], "gap": "description", "priority": "HIGH" },
-  "principle_5_data_minimization": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
+  "principle_1_safety": { 
+    "status": "MET", 
+    "evidence_found": ["Quote from document"],
+    "gap": "none", 
+    "priority": "LOW" 
+  },
+  "principle_2_fairness": { 
+    "status": "PARTIALLY_MET", 
+    "evidence_found": ["Quote from document"], 
+    "gap": "Brief description", 
+    "priority": "MEDIUM" 
+  },
+  "principle_3_accountability": { 
+    "status": "MET", 
+    "evidence_found": ["Quote from document"],
+    "gap": "none", 
+    "priority": "LOW" 
+  },
+  "principle_4_contestability": { 
+    "status": "NOT_MET", 
+    "evidence_found": [], 
+    "gap": "Brief description", 
+    "priority": "HIGH" 
+  },
+  "principle_5_data_minimization": { 
+    "status": "MET", 
+    "evidence_found": ["Quote from document"], 
+    "gap": "none", 
+    "priority": "LOW" 
+  },
   "overall_score": 65,
-  "critical_gaps": ["gap 1"],
-  "strengths": ["strength 1", "strength 2"],
-  "priority_actions": ["action 1", "action 2"],
-  "compliance_summary": "Summary of compliance status."
+  "critical_gaps": ["Gap 1"],
+  "strengths": ["Strength 1", "Strength 2"],
+  "priority_actions": ["Action 1", "Action 2"],
+  "compliance_summary": "Brief summary of compliance status"
 }
 
-Status: MET, PARTIALLY_MET, NOT_MET, or EVIDENCE_MISSING.
-Priority: CRITICAL, HIGH, MEDIUM, or LOW.
-Score: 0-100 as a number.
+Status options: MET, PARTIALLY_MET, NOT_MET, EVIDENCE_MISSING
+Priority options: CRITICAL, HIGH, MEDIUM, LOW
+Score: 0-100 (number)
 
-IMPORTANT: Return ONLY the JSON object. No markdown. No explanatory text.
+IMPORTANT: Generate ONLY the JSON - no explanation text, no markdown, nothing else.
 `;
 }
 

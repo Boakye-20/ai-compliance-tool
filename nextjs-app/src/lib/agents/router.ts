@@ -14,6 +14,13 @@ const HIGH_RISK_KEYWORDS = [
 ];
 
 export function routeFrameworks(extractedData: ExtractedData, userSelections: FrameworkCode[]): FrameworkCode[] {
+    // IMPORTANT: Respect user selections - this is the primary source of truth
+    // Only use the detected frameworks as suggestions for logging/messaging purposes
+
+    // Clone user selections to avoid modifying the original array
+    return [...userSelections];
+
+    /* Removed auto-triggering logic: The user's explicit selections should be respected
     const frameworks = new Set<FrameworkCode>(userSelections);
 
     // Auto-trigger ICO/DPA if personal data detected
@@ -47,4 +54,5 @@ export function routeFrameworks(extractedData: ExtractedData, userSelections: Fr
     }
 
     return Array.from(frameworks);
+    */
 }
