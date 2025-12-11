@@ -95,6 +95,22 @@ export function AnalysisResults({ analysis }: AnalysisResultsProps) {
                                             {/* Evidence Found */}
                                             <div className="mb-3">
                                                 <p className="font-medium text-sm text-gray-900 mb-2">📄 Evidence Found:</p>
+
+                                                {/* Top-level evidence_found (e.g. EU AI Act aggregated evidence) */}
+                                                {Array.isArray((framework.result as any).evidence_found) &&
+                                                    (framework.result as any).evidence_found.length > 0 && (
+                                                        <div className="text-xs text-gray-600 mb-2 ml-1">
+                                                            {(framework.result as any).evidence_found
+                                                                .slice(0, 3)
+                                                                .map((e: string, idx: number) => (
+                                                                    <div key={idx} className="italic">
+                                                                        - {e.length > 150 ? `${e.substring(0, 150)}...` : e}
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    )}
+
+                                                {/* Generic principles/articles and ISO pillars */}
                                                 {Object.entries(framework.result).map(([key, value]) => {
                                                     if (!key.startsWith('principle_') && !key.startsWith('article_') &&
                                                         !['governance', 'risk_management', 'data_lifecycle', 'monitoring'].includes(key)) {
@@ -132,6 +148,38 @@ export function AnalysisResults({ analysis }: AnalysisResultsProps) {
                                                     }
                                                     return null;
                                                 })}
+
+                                                {/* EU AI Act specific obligations */}
+                                                {framework.key === 'eu_act_result' && framework.result.obligations_if_high_risk && (
+                                                    Object.entries(framework.result.obligations_if_high_risk as Record<string, any>).map(([key, value]) => {
+                                                        if (!value || typeof value !== 'object') return null;
+                                                        const item = value as any;
+                                                        const itemStatus = item.status || 'Unknown';
+                                                        const evidence = item.evidence_found || item.evidence || [];
+
+                                                        const statusIcon = itemStatus === "MET" ? "✅" :
+                                                            itemStatus === "PARTIALLY_MET" ? "⚠️" : "❌";
+
+                                                        const displayName = key
+                                                            .replace(/_/g, ' ')
+                                                            .replace(/\b\w/g, l => l.toUpperCase());
+
+                                                        return (
+                                                            <div key={key} className="text-xs text-gray-600 mb-2">
+                                                                <strong>{statusIcon} {displayName}:</strong> {itemStatus}
+                                                                {Array.isArray(evidence) && evidence.length > 0 && (
+                                                                    <div className="ml-4 mt-1">
+                                                                        {evidence.slice(0, 2).map((e: string, idx: number) => (
+                                                                            <div key={idx} className="italic">
+                                                                                - {e.length > 150 ? `${e.substring(0, 150)}...` : e}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })
+                                                )}
                                             </div>
 
                                             {/* Gaps */}
