@@ -63,6 +63,8 @@ Return ONLY valid JSON (no markdown):
   "compliance_summary": "2-3 sentence summary"
 }
 
+IMPORTANT: The "..." blocks above are ONLY illustrative. In your actual JSON output you MUST fully expand every object and you MUST NOT output any "..." tokens anywhere. If information is missing, still return a complete object with empty arrays or explanatory strings.
+
 SCORING GUIDE:
 - Document covers the topic with specific guidance/recommendations = MET
 - Document mentions topic but lacks detail = PARTIALLY_MET

@@ -44,6 +44,8 @@ Return ONLY valid JSON (no markdown):
   "priority_actions": [],
   "compliance_summary": "2-3 sentence summary"
 }
+
+IMPORTANT: The "..." tokens in the JSON shape above are ONLY illustrative. In your actual JSON output you MUST fill in complete objects for every field and you MUST NOT output any "...". If information is missing, still provide full objects with empty arrays or explanatory strings.
 `;
 }
 
