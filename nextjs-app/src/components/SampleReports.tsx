@@ -243,7 +243,7 @@ export function SampleReports() {
 
             {!hasAnySamples && !showUpload && (
                 <p className="text-sm text-gray-500 text-center py-4">
-                    No sample reports yet. Click "Add Sample" to upload one.
+                    No sample reports yet. Click &quot;Add Sample&quot; to upload one.
                 </p>
             )}
 
