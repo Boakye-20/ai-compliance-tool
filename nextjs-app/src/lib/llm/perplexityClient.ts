@@ -35,7 +35,7 @@ export async function callPerplexity(prompt: string, model: ModelType = 'sonar-p
                 },
             ],
             temperature: 0,
-            max_tokens: 4096,
+            max_tokens: 8000,
         }),
     });
 
