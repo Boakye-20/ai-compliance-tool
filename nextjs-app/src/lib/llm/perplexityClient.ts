@@ -35,7 +35,7 @@ export async function callPerplexity(prompt: string, model: ModelType = 'sonar-r
                 },
             ],
             temperature: 0,
-            max_tokens: 4000,
+            max_tokens: 6000,
         }),
     });
 
@@ -109,10 +109,66 @@ export function parseJsonResponse<T>(content: string): T {
         cleaned = cleaned.slice(0, lastBrace + 1);
     }
 
+    // Try to parse, with fallback repair attempts
     try {
         return JSON.parse(cleaned);
-    } catch (e) {
-        console.error('JSON parse error. Cleaned content (first 500 chars):', cleaned.slice(0, 500));
-        throw new Error(`Could not parse JSON from response: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    } catch (firstError) {
+        console.error('JSON parse error (first attempt). Trying repairs...');
+
+        // Attempt repairs for common LLM JSON errors
+        let repaired = cleaned;
+
+        // Fix unterminated strings by finding unbalanced quotes and closing them
+        // Count quotes and try to balance
+        const quoteCount = (repaired.match(/"/g) || []).length;
+        if (quoteCount % 2 !== 0) {
+            // Odd number of quotes - find last unclosed string and close it
+            // Look for pattern like "text without closing quote followed by , or }
+            repaired = repaired.replace(/"([^"]*?)([,}\]])(?=[^"]*$)/g, '"$1"$2');
+        }
+
+        // Fix missing commas between properties: }{ or ][ or ""  patterns
+        repaired = repaired.replace(/"\s*\n\s*"/g, '",\n"');
+        repaired = repaired.replace(/}\s*\n\s*"/g, '},\n"');
+        repaired = repaired.replace(/]\s*\n\s*"/g, '],\n"');
+
+        // Fix truncated arrays/objects by ensuring proper closing
+        let openBraces = 0;
+        let openBrackets = 0;
+        let inString = false;
+        for (let i = 0; i < repaired.length; i++) {
+            const char = repaired[i];
+            const prevChar = i > 0 ? repaired[i - 1] : '';
+            if (char === '"' && prevChar !== '\\') inString = !inString;
+            if (!inString) {
+                if (char === '{') openBraces++;
+                if (char === '}') openBraces--;
+                if (char === '[') openBrackets++;
+                if (char === ']') openBrackets--;
+            }
+        }
+
+        // Close any unclosed structures
+        // First close any unclosed string
+        if (inString) repaired += '"';
+        // Then close brackets and braces
+        while (openBrackets > 0) {
+            repaired += ']';
+            openBrackets--;
+        }
+        while (openBraces > 0) {
+            repaired += '}';
+            openBraces--;
+        }
+
+        // Remove trailing commas again after repairs
+        repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+
+        try {
+            return JSON.parse(repaired);
+        } catch (secondError) {
+            console.error('JSON parse error after repair. Content (first 500 chars):', cleaned.slice(0, 500));
+            throw new Error(`Could not parse JSON from response: ${firstError instanceof Error ? firstError.message : 'Unknown error'}`);
+        }
     }
 }
