@@ -63,21 +63,21 @@ export function parseJsonResponse<T>(content: string): T {
 
     cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
 
+    // CRITICAL: Ensure we ONLY have the JSON object, nothing before or after
+    // This is the nuclear option - strict extraction
+    cleaned = cleaned.trim();
+
     // Remove common LLM artifacts that break JSON parsing
     // 1. Remove "..." placeholders (with or without quotes)
     cleaned = cleaned.replace(/"\.\.\."/g, '""');
     cleaned = cleaned.replace(/\.\.\.\s*/g, '');
     // 2. Remove trailing commas before } or ]
     cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
-    // 3. Remove any remaining non-JSON text after the closing brace
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (lastBrace !== -1) {
-        cleaned = cleaned.slice(0, lastBrace + 1);
-    }
 
     // Try to parse, with fallback repair attempts
     try {
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        return parsed;
     } catch (firstError) {
         console.error('JSON parse error (first attempt). Trying repairs...');
 
