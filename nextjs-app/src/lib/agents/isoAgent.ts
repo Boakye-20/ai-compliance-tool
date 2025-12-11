@@ -58,7 +58,7 @@ export async function analyzeISOCompliance(extractedData: ExtractedData): Promis
 
     try {
         console.log('ISO agent: calling Perplexity...');
-        const response = await callPerplexity(prompt, 'sonar-reasoning');
+        const response = await callPerplexity(prompt, 'sonar-pro');
         console.log('ISO agent: raw response length:', response.length);
         console.log('ISO agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<ISOResult>(response);

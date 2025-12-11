@@ -70,7 +70,7 @@ export async function analyzeICOCompliance(extractedData: ExtractedData): Promis
 
     try {
         console.log('ICO agent: calling Perplexity...');
-        const response = await callPerplexity(prompt, 'sonar-reasoning');
+        const response = await callPerplexity(prompt, 'sonar-pro');
         console.log('ICO agent: raw response length:', response.length);
         console.log('ICO agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<ICOResult>(response);

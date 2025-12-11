@@ -67,7 +67,7 @@ export async function analyzeEUActCompliance(extractedData: ExtractedData): Prom
 
     try {
         console.log('EU Act agent: calling Perplexity...');
-        const response = await callPerplexity(prompt, 'sonar-reasoning');
+        const response = await callPerplexity(prompt, 'sonar-pro');
         console.log('EU Act agent: raw response length:', response.length);
         console.log('EU Act agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<EUActResult>(response);
