@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FileText, Download, Calendar, BarChart3, Trash2 } from 'lucide-react';
+import { staticSampleReports, StaticSampleReport } from '@/config/sampleReports';
 
 export interface SampleReport {
     id: string;
@@ -101,7 +102,9 @@ export function SampleReports() {
         }
     };
 
-    if (reports.length === 0) return null;
+    const allReports = [...staticSampleReports, ...reports];
+
+    if (allReports.length === 0) return null;
 
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
@@ -118,6 +121,50 @@ export function SampleReports() {
             </p>
 
             <div className="space-y-3">
+                {/* Static samples (visible to everyone) */}
+                {staticSampleReports.map((report) => (
+                    <div
+                        key={report.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 transition-colors"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-lg ${getScoreBg(report.score)}`}>
+                                <BarChart3 className={`w-5 h-5 ${getScoreColor(report.score)}`} />
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-900">{report.name}</h4>
+                                <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                    <span className="flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {new Date(report.date).toLocaleDateString('en-GB', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric',
+                                        })}
+                                    </span>
+                                    <span>•</span>
+                                    <span>{report.frameworks.length} frameworks</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className={`text-lg font-bold ${getScoreColor(report.score)}`}>
+                                {report.score}%
+                            </div>
+                            <a
+                                href={report.pdfPath}
+                                download
+                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Download className="w-4 h-4" />
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                ))}
+
+                {/* User-saved samples (localStorage, only visible in current browser) */}
                 {reports.map((report) => (
                     <div
                         key={report.id}
