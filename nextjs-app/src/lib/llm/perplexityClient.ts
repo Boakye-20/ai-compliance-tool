@@ -54,17 +54,26 @@ export function parseJsonResponse<T>(content: string): T {
     // Remove <think>...</think> blocks from sonar-reasoning model
     // Handle both closed tags and unclosed/malformed tags
     cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
-    // Also remove any remaining unclosed <think> tag and everything before the JSON
-    if (cleaned.includes('<think>')) {
+
+    // If response still starts with <think> (unclosed tag), skip to JSON
+    if (cleaned.startsWith('<think>') || cleaned.startsWith('<think ')) {
+        const jsonStart = cleaned.indexOf('{');
+        if (jsonStart !== -1) {
+            cleaned = cleaned.slice(jsonStart);
+        }
+    }
+
+    // Also handle case where </think> appears without opening tag being removed
+    if (cleaned.includes('</think>')) {
         const thinkEnd = cleaned.lastIndexOf('</think>');
-        if (thinkEnd !== -1) {
-            cleaned = cleaned.slice(thinkEnd + 8);
-        } else {
-            // No closing tag - find the first { which starts the JSON
-            const jsonStart = cleaned.indexOf('{');
-            if (jsonStart !== -1) {
-                cleaned = cleaned.slice(jsonStart);
-            }
+        cleaned = cleaned.slice(thinkEnd + 8);
+    }
+
+    // If there's still any <think> tag anywhere, just find the JSON
+    if (cleaned.includes('<think')) {
+        const jsonStart = cleaned.indexOf('{');
+        if (jsonStart !== -1) {
+            cleaned = cleaned.slice(jsonStart);
         }
     }
     cleaned = cleaned.trim();
