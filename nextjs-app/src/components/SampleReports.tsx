@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FileText, Download, Calendar, BarChart3, Trash2, Upload, Loader2 } from 'lucide-react';
+import { staticSampleReports } from '@/config/sampleReports';
 
 interface BlobSample {
     id: string;
@@ -178,7 +179,7 @@ export function SampleReports() {
         }
     };
 
-    const hasAnySamples = blobSamples.length > 0 || reports.length > 0;
+    const hasAnySamples = staticSampleReports.length > 0 || blobSamples.length > 0 || reports.length > 0;
 
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
@@ -252,7 +253,50 @@ export function SampleReports() {
             )}
 
             <div className="space-y-3">
-                {/* Blob samples (visible to everyone) */}
+                {/* Static repo samples (always visible) */}
+                {staticSampleReports.map((sample) => (
+                    <div
+                        key={sample.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 transition-colors"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-lg ${getScoreBg(sample.score)}`}>
+                                <BarChart3 className={`w-5 h-5 ${getScoreColor(sample.score)}`} />
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-900">{sample.name}</h4>
+                                <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                    <span className="flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {new Date(sample.date).toLocaleDateString('en-GB', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric',
+                                        })}
+                                    </span>
+                                    <span>•</span>
+                                    <span>{sample.frameworks.length} frameworks</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className={`text-lg font-bold ${getScoreColor(sample.score)}`}>
+                                {sample.score}%
+                            </div>
+                            <a
+                                href={sample.pdfPath}
+                                download
+                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Download className="w-4 h-4" />
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                ))}
+
+                {/* Blob samples (uploaded via UI, visible to everyone) */}
                 {blobSamples.map((sample) => (
                     <div
                         key={sample.id}
