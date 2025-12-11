@@ -51,51 +51,17 @@ export async function callPerplexity(prompt: string, model: ModelType = 'sonar-r
 export function parseJsonResponse<T>(content: string): T {
     let cleaned = content.trim();
 
-    // Remove <think>...</think> blocks from sonar-reasoning model
-    // Handle both closed tags and unclosed/malformed tags
-    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    // FIRST: Extract JSON object by finding { and } - this handles ALL prefix issues
+    // including <think> blocks, markdown, or any other preamble
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
 
-    // If response still starts with <think> (unclosed tag), skip to JSON
-    if (cleaned.startsWith('<think>') || cleaned.startsWith('<think ')) {
-        const jsonStart = cleaned.indexOf('{');
-        if (jsonStart !== -1) {
-            cleaned = cleaned.slice(jsonStart);
-        }
+    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+        console.error('No JSON object found in response. First 300 chars:', cleaned.slice(0, 300));
+        throw new Error('Could not parse JSON from response: No JSON object found');
     }
 
-    // Also handle case where </think> appears without opening tag being removed
-    if (cleaned.includes('</think>')) {
-        const thinkEnd = cleaned.lastIndexOf('</think>');
-        cleaned = cleaned.slice(thinkEnd + 8);
-    }
-
-    // If there's still any <think> tag anywhere, just find the JSON
-    if (cleaned.includes('<think')) {
-        const jsonStart = cleaned.indexOf('{');
-        if (jsonStart !== -1) {
-            cleaned = cleaned.slice(jsonStart);
-        }
-    }
-    cleaned = cleaned.trim();
-
-    // Remove markdown code fences
-    if (cleaned.startsWith('```json')) {
-        cleaned = cleaned.slice(7);
-    }
-    if (cleaned.startsWith('```')) {
-        cleaned = cleaned.slice(3);
-    }
-    if (cleaned.endsWith('```')) {
-        cleaned = cleaned.slice(0, -3);
-    }
-    cleaned = cleaned.trim();
-
-    // Extract JSON object - find the first { and last }
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
-        cleaned = cleaned.slice(start, end + 1);
-    }
+    cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
 
     // Remove common LLM artifacts that break JSON parsing
     // 1. Remove "..." placeholders (with or without quotes)
