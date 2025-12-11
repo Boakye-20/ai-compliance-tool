@@ -95,7 +95,9 @@ export async function analyzeEUActCompliance(extractedData: ExtractedData): Prom
             risk_justification: result.risk_justification || '',
         };
     } catch (error) {
-        console.error('EU Act analysis error:', error);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('EU Act analysis error:', errMsg);
+        console.error('Full error:', error);
         return {
             framework: 'EU AI Act',
             risk_tier: 'UNKNOWN',
@@ -105,7 +107,7 @@ export async function analyzeEUActCompliance(extractedData: ExtractedData): Prom
             critical_gaps: [],
             priority_actions: [],
             strengths: [],
-            compliance_summary: 'EU AI Act analysis could not be completed. Treat this framework as not yet assessed.',
+            compliance_summary: `EU AI Act analysis failed: ${errMsg.slice(0, 200)}`,
         };
     }
 }

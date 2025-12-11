@@ -97,7 +97,9 @@ export async function analyzeICOCompliance(extractedData: ExtractedData): Promis
             compliance_summary: result.compliance_summary || 'Analysis completed.',
         };
     } catch (error) {
-        console.error('ICO analysis error:', error);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('ICO analysis error:', errMsg);
+        console.error('Full error:', error);
         return {
             framework: 'UK ICO',
             score: 0,
@@ -105,7 +107,7 @@ export async function analyzeICOCompliance(extractedData: ExtractedData): Promis
             critical_gaps: [],
             priority_actions: [],
             strengths: [],
-            compliance_summary: 'UK ICO analysis could not be completed. Treat this framework as not yet assessed.',
+            compliance_summary: `ICO analysis failed: ${errMsg.slice(0, 200)}`,
         };
     }
 }

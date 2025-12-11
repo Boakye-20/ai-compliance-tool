@@ -86,7 +86,9 @@ export async function analyzeDPACompliance(extractedData: ExtractedData): Promis
             compliance_summary: result.compliance_summary || 'Analysis completed.',
         };
     } catch (error) {
-        console.error('DPA analysis error:', error);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('DPA analysis error:', errMsg);
+        console.error('Full error:', error);
         return {
             framework: 'UK DPA / GDPR',
             score: 0,
@@ -94,7 +96,7 @@ export async function analyzeDPACompliance(extractedData: ExtractedData): Promis
             critical_gaps: [],
             priority_actions: [],
             strengths: [],
-            compliance_summary: 'UK DPA/GDPR analysis could not be completed. Treat this framework as not yet assessed.',
+            compliance_summary: `DPA analysis failed: ${errMsg.slice(0, 200)}`,
         };
     }
 }

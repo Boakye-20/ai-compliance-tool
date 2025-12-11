@@ -81,7 +81,9 @@ export async function analyzeISOCompliance(extractedData: ExtractedData): Promis
             compliance_summary: result.compliance_summary || 'Analysis completed.',
         };
     } catch (error) {
-        console.error('ISO analysis error:', error);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('ISO analysis error:', errMsg);
+        console.error('Full error:', error);
         return {
             framework: 'ISO/IEC 42001',
             score: 0,
@@ -89,7 +91,7 @@ export async function analyzeISOCompliance(extractedData: ExtractedData): Promis
             critical_gaps: [],
             priority_actions: [],
             strengths: [],
-            compliance_summary: 'ISO 42001 analysis could not be completed. Treat this framework as not yet assessed.',
+            compliance_summary: `ISO 42001 analysis failed: ${errMsg.slice(0, 200)}`,
         };
     }
 }
