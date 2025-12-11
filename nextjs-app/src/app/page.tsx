@@ -85,9 +85,29 @@ export default function CompliancePage() {
     };
 
     const handleDownloadReport = () => {
-        if (!analysis?.job_id) return;
-        const url = `/api/report/${analysis.job_id}`;
-        window.open(url, '_blank');
+        if (!analysis?.report_base64) return;
+
+        try {
+            const byteCharacters = atob(analysis.report_base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ai_compliance_report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Failed to download report:', e);
+        }
     };
 
     const canAnalyze = uploadedFile && selectedFrameworks.length > 0 && !isAnalyzing;
@@ -139,7 +159,7 @@ export default function CompliancePage() {
                             🚀 {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
                         </button>
 
-                        {analysis?.job_id && (
+                        {analysis?.report_base64 && (
                             <button
                                 onClick={handleDownloadReport}
                                 className="btn-secondary"
