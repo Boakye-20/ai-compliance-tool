@@ -8,7 +8,7 @@ import { AnalysisResults } from '@/components/AnalysisResults';
 import { FrameworkDescriptions } from '@/components/FrameworkDescriptions';
 import { EmptyState } from '@/components/EmptyState';
 import { AnalysisProgress } from '@/components/AnalysisProgress';
-import { SampleReports } from '@/components/SampleReports';
+import { SampleReports, saveReport, SampleReport } from '@/components/SampleReports';
 
 export type FrameworkKey = "ICO" | "DPA" | "EU_AI_ACT" | "ISO_42001";
 
@@ -169,12 +169,43 @@ export default function CompliancePage() {
                         </button>
 
                         {analysis?.report_base64 && (
-                            <button
-                                onClick={handleDownloadReport}
-                                className="btn-secondary"
-                            >
-                                📄 Download PDF Report
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleDownloadReport}
+                                    className="btn-secondary"
+                                >
+                                    📄 Download PDF Report
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const baseName = uploadedFile?.name?.replace(/\.pdf$/i, '') || 'document';
+                                        const score = analysis.analysis.synthesis?.uk_alignment_score || 0;
+                                        const frameworks = selectedFrameworks.map((fw) => {
+                                            const names: Record<FrameworkKey, string> = {
+                                                ICO: 'UK ICO',
+                                                DPA: 'UK DPA/GDPR',
+                                                EU_AI_ACT: 'EU AI Act',
+                                                ISO_42001: 'ISO 42001',
+                                            };
+                                            return names[fw];
+                                        });
+                                        const report: SampleReport = {
+                                            id: Date.now().toString(),
+                                            name: `${baseName} Compliance Report`,
+                                            documentName: uploadedFile?.name || 'document.pdf',
+                                            date: new Date().toISOString().split('T')[0],
+                                            score,
+                                            frameworks,
+                                            pdfBase64: analysis.report_base64!,
+                                        };
+                                        saveReport(report);
+                                        alert('Report saved to samples!');
+                                    }}
+                                    className="btn-secondary"
+                                >
+                                    💾 Save to Samples
+                                </button>
+                            </>
                         )}
                     </div>
                 )}

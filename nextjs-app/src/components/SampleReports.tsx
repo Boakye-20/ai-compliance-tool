@@ -1,28 +1,19 @@
 "use client";
 
-import { FileText, Download, Calendar, BarChart3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Download, Calendar, BarChart3, Trash2 } from 'lucide-react';
 
-interface SampleReport {
+export interface SampleReport {
     id: string;
     name: string;
     documentName: string;
     date: string;
     score: number;
     frameworks: string[];
-    pdfPath: string;
+    pdfBase64: string;
 }
 
-const sampleReports: SampleReport[] = [
-    {
-        id: '1',
-        name: 'LFR DPIA Compliance Report',
-        documentName: 'lfr-dpia.pdf',
-        date: '2025-12-11',
-        score: 60,
-        frameworks: ['UK ICO', 'UK DPA/GDPR', 'EU AI Act', 'ISO 42001'],
-        pdfPath: '/samples/lfr-dpia_compliance_report.pdf',
-    },
-];
+const STORAGE_KEY = 'ai_compliance_sample_reports';
 
 function getScoreColor(score: number): string {
     if (score >= 70) return 'text-green-600';
@@ -36,8 +27,81 @@ function getScoreBg(score: number): string {
     return 'bg-red-100';
 }
 
+export function getSavedReports(): SampleReport[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+}
+
+export function saveReport(report: SampleReport): void {
+    if (typeof window === 'undefined') return;
+    try {
+        const existing = getSavedReports();
+        const updated = [report, ...existing].slice(0, 10); // Keep max 10 reports
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        window.dispatchEvent(new Event('sampleReportsUpdated'));
+    } catch (e) {
+        console.error('Failed to save report:', e);
+    }
+}
+
+export function deleteReport(id: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+        const existing = getSavedReports();
+        const updated = existing.filter((r) => r.id !== id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        window.dispatchEvent(new Event('sampleReportsUpdated'));
+    } catch (e) {
+        console.error('Failed to delete report:', e);
+    }
+}
+
 export function SampleReports() {
-    if (sampleReports.length === 0) return null;
+    const [reports, setReports] = useState<SampleReport[]>([]);
+
+    useEffect(() => {
+        setReports(getSavedReports());
+
+        const handleUpdate = () => setReports(getSavedReports());
+        window.addEventListener('sampleReportsUpdated', handleUpdate);
+        return () => window.removeEventListener('sampleReportsUpdated', handleUpdate);
+    }, []);
+
+    const handleDownload = (report: SampleReport) => {
+        try {
+            const byteCharacters = atob(report.pdfBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${report.documentName.replace(/\.pdf$/i, '')}_compliance_report.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Failed to download report:', e);
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        if (confirm('Remove this report from samples?')) {
+            deleteReport(id);
+        }
+    };
+
+    if (reports.length === 0) return null;
 
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
@@ -54,7 +118,7 @@ export function SampleReports() {
             </p>
 
             <div className="space-y-3">
-                {sampleReports.map((report) => (
+                {reports.map((report) => (
                     <div
                         key={report.id}
                         className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 transition-colors"
@@ -80,18 +144,24 @@ export function SampleReports() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             <div className={`text-lg font-bold ${getScoreColor(report.score)}`}>
                                 {report.score}%
                             </div>
-                            <a
-                                href={report.pdfPath}
-                                download
+                            <button
+                                onClick={() => handleDownload(report)}
                                 className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                             >
                                 <Download className="w-4 h-4" />
                                 Download
-                            </a>
+                            </button>
+                            <button
+                                onClick={() => handleDelete(report.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Remove from samples"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
                 ))}
