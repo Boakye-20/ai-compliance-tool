@@ -158,9 +158,10 @@ function formatDate(date: Date): string {
 }
 
 function getScoreRating(score: number): string {
-    if (score >= 80) return 'Strong';
-    if (score >= 60) return 'Moderate';
-    if (score >= 40) return 'Weak';
+    // Adjusted bands so mid-50s are treated as Moderate, not Weak
+    if (score >= 70) return 'Strong';
+    if (score >= 50) return 'Moderate';
+    if (score >= 30) return 'Weak';
     return 'Critical';
 }
 
