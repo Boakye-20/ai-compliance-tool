@@ -51,6 +51,10 @@ export async function callPerplexity(prompt: string, model: ModelType = 'sonar-r
 export function parseJsonResponse<T>(content: string): T {
     let cleaned = content.trim();
 
+    // Remove <think>...</think> blocks from sonar-reasoning model
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    cleaned = cleaned.trim();
+
     // Remove markdown code fences
     if (cleaned.startsWith('```json')) {
         cleaned = cleaned.slice(7);
@@ -63,7 +67,7 @@ export function parseJsonResponse<T>(content: string): T {
     }
     cleaned = cleaned.trim();
 
-    // Extract JSON object
+    // Extract JSON object - find the first { and last }
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end !== -1 && end > start) {
