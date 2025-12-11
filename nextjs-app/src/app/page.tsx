@@ -8,6 +8,7 @@ import { AnalysisResults } from '@/components/AnalysisResults';
 import { FrameworkDescriptions } from '@/components/FrameworkDescriptions';
 import { EmptyState } from '@/components/EmptyState';
 import { AnalysisProgress } from '@/components/AnalysisProgress';
+import { SampleReports } from '@/components/SampleReports';
 
 export type FrameworkKey = "ICO" | "DPA" | "EU_AI_ACT" | "ISO_42001";
 
@@ -47,10 +48,11 @@ export default function CompliancePage() {
             step++;
             setCurrentStep(step);
 
-            if (step >= totalSteps) {
+            // Stop at the last step (Generating Report) and keep it spinning
+            if (step >= totalSteps - 1) {
                 clearInterval(progressInterval);
             }
-        }, 3000); // Move to next step every 3 seconds
+        }, 5000); // Move to next step every 5 seconds (slower to match actual analysis time)
 
         return () => clearInterval(progressInterval);
     }, [isAnalyzing, selectedFrameworks.length]);
@@ -97,9 +99,13 @@ export default function CompliancePage() {
             const blob = new Blob([byteArray], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
 
+            // Generate filename based on uploaded file
+            const baseName = uploadedFile?.name?.replace(/\.pdf$/i, '') || 'document';
+            const reportName = `${baseName}_compliance_report.pdf`;
+
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'ai_compliance_report.pdf';
+            a.download = reportName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -136,6 +142,9 @@ export default function CompliancePage() {
 
             {/* Framework descriptions */}
             <FrameworkDescriptions />
+
+            {/* Sample Reports for portfolio */}
+            <SampleReports />
 
             {/* Stats cards */}
             <StatsCards analysis={analysis} selectedCount={selectedFrameworks.length} />

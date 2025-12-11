@@ -82,6 +82,16 @@ export async function analyzeEUActCompliance(extractedData: ExtractedData): Prom
             ).length;
         }
 
+        // Extract evidence from obligations if top-level evidence_found is empty
+        let evidenceFound = (result as any).evidence_found || [];
+        if (evidenceFound.length === 0 && result.obligations_if_high_risk) {
+            for (const ob of Object.values(result.obligations_if_high_risk)) {
+                if (ob?.evidence_found) {
+                    evidenceFound.push(...ob.evidence_found);
+                }
+            }
+        }
+
         return {
             ...result,
             framework: 'EU AI Act',
@@ -93,6 +103,7 @@ export async function analyzeEUActCompliance(extractedData: ExtractedData): Prom
             compliance_summary: result.compliance_summary || 'Analysis completed.',
             risk_tier: result.risk_tier || 'UNKNOWN',
             risk_justification: result.risk_justification || '',
+            evidence_found: evidenceFound,
         };
     } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
