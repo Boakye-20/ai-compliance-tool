@@ -60,7 +60,7 @@ export async function analyzeDPACompliance(extractedData: ExtractedData): Promis
 
     try {
         console.log('DPA agent: calling Perplexity...');
-        const response = await callPerplexity(prompt, 'sonar-pro');
+        const response = await callPerplexity(prompt, 'sonar-reasoning');
         console.log('DPA agent: raw response length:', response.length);
         console.log('DPA agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<DPAResult>(response);

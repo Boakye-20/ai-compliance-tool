@@ -11,9 +11,9 @@ export interface PerplexityResponse {
     }>;
 }
 
-export type ModelType = 'sonar' | 'sonar-pro';
+export type ModelType = 'sonar' | 'sonar-pro' | 'sonar-reasoning';
 
-export async function callPerplexity(prompt: string, model: ModelType = 'sonar-pro'): Promise<string> {
+export async function callPerplexity(prompt: string, model: ModelType = 'sonar-reasoning'): Promise<string> {
     const apiKey = process.env.PPLX_API_KEY;
 
     if (!apiKey) {
