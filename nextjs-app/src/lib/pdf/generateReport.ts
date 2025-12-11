@@ -90,7 +90,7 @@ function drawText(ctx: PageContext, text: string, size: number = 10, color?: any
 function drawBullet(ctx: PageContext, text: string, size: number = 10): PageContext {
     const bulletIndent = 15;
     ctx = addPageIfNeeded(ctx, size + 5);
-    ctx.page.drawText('•', {
+    ctx.page.drawText('-', {
         x: ctx.margin,
         y: ctx.y,
         size,
@@ -216,7 +216,7 @@ export async function generateReport(
     ctx.y -= 15;
 
     if (synthesis.total_critical_gaps > 0) {
-        ctx.page.drawText(`⚠ ${synthesis.total_critical_gaps} critical gaps require immediate attention`, {
+        ctx.page.drawText(`WARNING: ${synthesis.total_critical_gaps} critical gaps require immediate attention`, {
             x: ctx.margin,
             y: ctx.y,
             size: 11,
@@ -255,10 +255,10 @@ export async function generateReport(
 
     // Detailed Framework Analysis
     const frameworks = [
-        { name: 'UK ICO', result: icoResult, emoji: '🇬🇧' },
-        { name: 'UK DPA/GDPR', result: dpaResult, emoji: '🔒' },
-        { name: 'EU AI Act', result: euActResult, emoji: '🇪🇺' },
-        { name: 'ISO/IEC 42001', result: isoResult, emoji: '📋' },
+        { name: 'UK ICO', result: icoResult },
+        { name: 'UK DPA/GDPR', result: dpaResult },
+        { name: 'EU AI Act', result: euActResult },
+        { name: 'ISO/IEC 42001', result: isoResult },
     ];
 
     for (const fw of frameworks) {
@@ -268,7 +268,7 @@ export async function generateReport(
         ctx.y -= 10;
 
         // Framework Header
-        ctx.page.drawText(`${fw.emoji} ${fw.name}`, {
+        ctx.page.drawText(fw.name, {
             x: ctx.margin,
             y: ctx.y,
             size: 16,
@@ -304,7 +304,7 @@ export async function generateReport(
 
         // Strengths
         if (fw.result.strengths && fw.result.strengths.length > 0) {
-            ctx.page.drawText('✓ Strengths:', {
+            ctx.page.drawText('Strengths:', {
                 x: ctx.margin,
                 y: ctx.y,
                 size: 11,
@@ -320,7 +320,7 @@ export async function generateReport(
 
         // Critical Gaps
         if (fw.result.critical_gaps && fw.result.critical_gaps.length > 0) {
-            ctx.page.drawText('✗ Critical Gaps:', {
+            ctx.page.drawText('Critical Gaps:', {
                 x: ctx.margin,
                 y: ctx.y,
                 size: 11,
