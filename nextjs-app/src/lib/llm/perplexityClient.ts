@@ -63,15 +63,29 @@ export function parseJsonResponse<T>(content: string): T {
     }
     cleaned = cleaned.trim();
 
+    // Extract JSON object
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+        cleaned = cleaned.slice(start, end + 1);
+    }
+
+    // Remove common LLM artifacts that break JSON parsing
+    // 1. Remove "..." placeholders (with or without quotes)
+    cleaned = cleaned.replace(/"\.\.\."/g, '""');
+    cleaned = cleaned.replace(/\.\.\.\s*/g, '');
+    // 2. Remove trailing commas before } or ]
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+    // 3. Remove any remaining non-JSON text after the closing brace
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace !== -1) {
+        cleaned = cleaned.slice(0, lastBrace + 1);
+    }
+
     try {
         return JSON.parse(cleaned);
-    } catch {
-        const start = cleaned.indexOf('{');
-        const end = cleaned.lastIndexOf('}');
-        if (start !== -1 && end !== -1 && end > start) {
-            const inner = cleaned.slice(start, end + 1);
-            return JSON.parse(inner);
-        }
-        throw new Error('Could not parse JSON from response');
+    } catch (e) {
+        console.error('JSON parse error. Cleaned content (first 500 chars):', cleaned.slice(0, 500));
+        throw new Error(`Could not parse JSON from response: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
 }
