@@ -42,35 +42,26 @@ Analyze against the 5 ICO AI principles:
 
 For each principle, find SPECIFIC QUOTES or SECTIONS from the document that address it.
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON with this exact structure (no markdown, no text before or after):
 {
   "document_type_detected": "${docType}",
-  "principle_1_safety": {
-    "status": "MET" | "PARTIALLY_MET" | "NOT_MET" | "EVIDENCE_MISSING",
-    "evidence_found": ["Quote 1 from document", "Quote 2 from document"],
-    "sections_relevant": ["Section names or page references"],
-    "gap": "What's missing (or 'None - adequately covered')",
-    "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
-  },
-  "principle_2_fairness": { ... },
-  "principle_3_accountability": { ... },
-  "principle_4_contestability": { ... },
-  "principle_5_data_minimization": { ... },
-  "overall_score": 0-100,
-  "critical_gaps": ["List of critical issues - empty if none"],
-  "strengths": ["What the document does well"],
-  "priority_actions": ["Top 3-5 actions if any gaps exist"],
-  "compliance_summary": "2-3 sentence summary"
+  "principle_1_safety": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
+  "principle_2_fairness": { "status": "PARTIALLY_MET", "evidence_found": ["quote"], "gap": "description", "priority": "MEDIUM" },
+  "principle_3_accountability": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
+  "principle_4_contestability": { "status": "NOT_MET", "evidence_found": [], "gap": "description", "priority": "HIGH" },
+  "principle_5_data_minimization": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
+  "overall_score": 65,
+  "critical_gaps": ["gap 1"],
+  "strengths": ["strength 1", "strength 2"],
+  "priority_actions": ["action 1", "action 2"],
+  "compliance_summary": "Summary of compliance status."
 }
 
-IMPORTANT: The "..." blocks above are ONLY illustrative. In your actual JSON output you MUST fully expand every object and you MUST NOT output any "..." tokens anywhere. If information is missing, still return a complete object with empty arrays or explanatory strings.
+Status: MET, PARTIALLY_MET, NOT_MET, or EVIDENCE_MISSING.
+Priority: CRITICAL, HIGH, MEDIUM, or LOW.
+Score: 0-100 as a number.
 
-SCORING GUIDE:
-- Document covers the topic with specific guidance/recommendations = MET
-- Document mentions topic but lacks detail = PARTIALLY_MET
-- Document does not address the topic = NOT_MET or EVIDENCE_MISSING
-
-For a comprehensive GUIDANCE document like a government playbook, expect scores of 60-90%.
+IMPORTANT: Return ONLY the JSON object. No markdown. No explanatory text.
 `;
 }
 
@@ -78,8 +69,12 @@ export async function analyzeICOCompliance(extractedData: ExtractedData): Promis
     const prompt = getICOPrompt(extractedData);
 
     try {
+        console.log('ICO agent: calling Perplexity...');
         const response = await callPerplexity(prompt, 'sonar-pro');
+        console.log('ICO agent: raw response length:', response.length);
+        console.log('ICO agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<ICOResult>(response);
+        console.log('ICO agent: parsed successfully, score:', (result as any).overall_score);
 
         const overallScore = typeof (result as any).overall_score === 'number' ? (result as any).overall_score : 0;
 

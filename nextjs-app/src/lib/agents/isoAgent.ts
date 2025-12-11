@@ -31,21 +31,25 @@ Analyze these ISO 42001 requirement areas:
 3. Data Quality & Lifecycle
 4. Monitoring & Incident Response
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON with this exact structure (no markdown, no text before or after):
 {
   "document_type_detected": "${docType}",
-  "governance": { "status": "...", "evidence_found": [], "sections_relevant": [], "gap": "", "priority": "..." },
-  "risk_management": { ... },
-  "data_lifecycle": { ... },
-  "monitoring": { ... },
-  "overall_score": 0-100,
-  "critical_gaps": [],
-  "strengths": [],
-  "priority_actions": [],
-  "compliance_summary": "2-3 sentence summary"
+  "governance": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
+  "risk_management": { "status": "PARTIALLY_MET", "evidence_found": ["quote"], "gap": "description", "priority": "MEDIUM" },
+  "data_lifecycle": { "status": "NOT_MET", "evidence_found": [], "gap": "description", "priority": "HIGH" },
+  "monitoring": { "status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW" },
+  "overall_score": 60,
+  "critical_gaps": ["gap 1"],
+  "strengths": ["strength 1", "strength 2"],
+  "priority_actions": ["action 1", "action 2"],
+  "compliance_summary": "Summary of ISO 42001 compliance status."
 }
 
-IMPORTANT: The "..." tokens in the JSON shape above are ONLY illustrative. In your actual JSON output you MUST fill in complete objects for every field and you MUST NOT output any "...". If information is missing, still provide full objects with empty arrays or explanatory strings.
+Status: MET, PARTIALLY_MET, NOT_MET, or EVIDENCE_MISSING.
+Priority: CRITICAL, HIGH, MEDIUM, or LOW.
+Score: 0-100 as a number.
+
+IMPORTANT: Return ONLY the JSON object. No markdown. No explanatory text.
 `;
 }
 
@@ -53,8 +57,12 @@ export async function analyzeISOCompliance(extractedData: ExtractedData): Promis
     const prompt = getISOPrompt(extractedData);
 
     try {
+        console.log('ISO agent: calling Perplexity...');
         const response = await callPerplexity(prompt, 'sonar-pro');
+        console.log('ISO agent: raw response length:', response.length);
+        console.log('ISO agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<ISOResult>(response);
+        console.log('ISO agent: parsed successfully, score:', (result as any).overall_score);
 
         const overallScore = typeof (result as any).overall_score === 'number' ? (result as any).overall_score : 0;
 

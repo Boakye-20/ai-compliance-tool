@@ -33,21 +33,25 @@ Analyze these AI-relevant GDPR/DPA requirements:
 3. Article 13/14 - Transparency
 4. Article 35 - DPIA
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON with this exact structure (no markdown, no explanatory text):
 {
   "document_type_detected": "${docType}",
-  "article_22_adm": { "status": "...", "evidence_found": [], "sections_relevant": [], "gap": "", "priority": "..." },
-  "article_5_fairness": { ... },
-  "article_13_transparency": { ... },
-  "article_35_dpia": { ... },
-  "overall_score": 0-100,
-  "critical_gaps": [],
-  "strengths": [],
-  "priority_actions": [],
-  "compliance_summary": "2-3 sentence summary"
+  "article_22_adm": { "status": "MET", "evidence_found": ["quote 1"], "gap": "none", "priority": "LOW" },
+  "article_5_fairness": { "status": "PARTIALLY_MET", "evidence_found": ["quote 1"], "gap": "description", "priority": "MEDIUM" },
+  "article_13_transparency": { "status": "NOT_MET", "evidence_found": [], "gap": "description", "priority": "HIGH" },
+  "article_35_dpia": { "status": "MET", "evidence_found": ["quote 1"], "gap": "none", "priority": "LOW" },
+  "overall_score": 75,
+  "critical_gaps": ["gap 1", "gap 2"],
+  "strengths": ["strength 1", "strength 2"],
+  "priority_actions": ["action 1", "action 2"],
+  "compliance_summary": "2-3 sentence summary of compliance status"
 }
 
-IMPORTANT: A government AI playbook that extensively discusses GDPR, DPIAs, data protection by design should score 60-85%, not 0%.
+Status values: MET, PARTIALLY_MET, NOT_MET, or EVIDENCE_MISSING.
+Priority values: CRITICAL, HIGH, MEDIUM, or LOW.
+Score range: 0-100 as a number.
+
+IMPORTANT: Return ONLY the JSON object. No markdown code fences. No text before or after.
 `;
 }
 
@@ -55,8 +59,12 @@ export async function analyzeDPACompliance(extractedData: ExtractedData): Promis
     const prompt = getDPAPrompt(extractedData);
 
     try {
+        console.log('DPA agent: calling Perplexity...');
         const response = await callPerplexity(prompt, 'sonar-pro');
+        console.log('DPA agent: raw response length:', response.length);
+        console.log('DPA agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<DPAResult>(response);
+        console.log('DPA agent: parsed successfully, score:', (result as any).overall_score);
 
         const overallScore = typeof (result as any).overall_score === 'number' ? (result as any).overall_score : 0;
 

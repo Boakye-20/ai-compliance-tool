@@ -27,37 +27,38 @@ ${extractedData.full_text?.slice(0, 25000) || ''}
 
 ---
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON with this exact structure (no markdown, no text before or after):
 {
   "document_type_detected": "${docType}",
-  "risk_tier": "PROHIBITED" | "HIGH_RISK" | "LIMITED_RISK" | "MINIMAL_RISK" | "N/A_GUIDANCE",
-  "risk_justification": "Why this classification (or 'Guidance document - assessing coverage')",
+  "risk_tier": "HIGH_RISK",
+  "risk_justification": "Reason for classification",
   "eu_act_coverage": {
-    "risk_classification_discussed": true/false,
-    "high_risk_obligations_discussed": true/false,
-    "transparency_requirements_discussed": true/false,
-    "prohibited_practices_discussed": true/false
+    "risk_classification_discussed": true,
+    "high_risk_obligations_discussed": true,
+    "transparency_requirements_discussed": false,
+    "prohibited_practices_discussed": false
   },
-  "evidence_found": ["Key quotes about EU AI Act compliance"],
-  "sections_relevant": ["Relevant section names"],
+  "evidence_found": ["quote 1", "quote 2"],
   "obligations_if_high_risk": {
-    "risk_management_system": {"status": "MET"|"PARTIALLY_MET"|"NOT_MET"|"EVIDENCE_MISSING"|"N/A", "evidence_found": [], "gap": "", "priority": "..." },
-    "data_governance": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." },
-    "technical_documentation": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." },
-    "record_keeping": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." },
-    "transparency": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." },
-    "human_oversight": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." },
-    "accuracy_robustness": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." },
-    "quality_management": {"status": "...", "evidence_found": [], "gap": "", "priority": "..." }
+    "risk_management_system": {"status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW"},
+    "data_governance": {"status": "PARTIALLY_MET", "evidence_found": ["quote"], "gap": "description", "priority": "MEDIUM"},
+    "technical_documentation": {"status": "NOT_MET", "evidence_found": [], "gap": "description", "priority": "HIGH"},
+    "transparency": {"status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW"},
+    "human_oversight": {"status": "MET", "evidence_found": ["quote"], "gap": "none", "priority": "LOW"}
   },
-  "overall_score": 0-100,
-  "critical_gaps": [],
-  "strengths": [],
-  "priority_actions": [],
-  "compliance_summary": "2-3 sentences"
+  "overall_score": 55,
+  "critical_gaps": ["gap 1"],
+  "strengths": ["strength 1", "strength 2"],
+  "priority_actions": ["action 1", "action 2"],
+  "compliance_summary": "Summary of EU AI Act compliance status."
 }
 
-IMPORTANT: The "..." parts in the JSON shape above are ONLY examples. In your real JSON output you MUST expand each object fully and you MUST NOT return any "..." tokens. When details are missing, still include full objects with empty arrays or explanatory text.
+Risk tier: PROHIBITED, HIGH_RISK, LIMITED_RISK, MINIMAL_RISK, or N/A_GUIDANCE.
+Status: MET, PARTIALLY_MET, NOT_MET, EVIDENCE_MISSING, or N/A.
+Priority: CRITICAL, HIGH, MEDIUM, or LOW.
+Score: 0-100 as a number.
+
+IMPORTANT: Return ONLY the JSON object. No markdown. No explanatory text.
 `;
 }
 
@@ -65,8 +66,12 @@ export async function analyzeEUActCompliance(extractedData: ExtractedData): Prom
     const prompt = getEUActPrompt(extractedData);
 
     try {
+        console.log('EU Act agent: calling Perplexity...');
         const response = await callPerplexity(prompt, 'sonar-pro');
+        console.log('EU Act agent: raw response length:', response.length);
+        console.log('EU Act agent: first 300 chars:', response.slice(0, 300));
         const result = parseJsonResponse<EUActResult>(response);
+        console.log('EU Act agent: parsed successfully, score:', (result as any).overall_score);
 
         const overallScore = typeof (result as any).overall_score === 'number' ? (result as any).overall_score : 0;
 
