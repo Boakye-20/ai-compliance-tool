@@ -29,7 +29,7 @@ export const staticSampleReports: StaticSampleReport[] = [
         documentName: 'operation-centron-dpia.pdf',
         date: '2025-12-11',
         score: 42,
-        frameworks: ['UK ICO', 'UK DPA/GDPR', 'EU AI Act', 'ISO 42001'],
+        frameworks: ['UK ICO', 'UK DPA/GDPR'],
         pdfPath: '/samples/operation-centron-dpia_compliance_report.pdf',
     },
 ];
