@@ -52,7 +52,21 @@ export function parseJsonResponse<T>(content: string): T {
     let cleaned = content.trim();
 
     // Remove <think>...</think> blocks from sonar-reasoning model
+    // Handle both closed tags and unclosed/malformed tags
     cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    // Also remove any remaining unclosed <think> tag and everything before the JSON
+    if (cleaned.includes('<think>')) {
+        const thinkEnd = cleaned.lastIndexOf('</think>');
+        if (thinkEnd !== -1) {
+            cleaned = cleaned.slice(thinkEnd + 8);
+        } else {
+            // No closing tag - find the first { which starts the JSON
+            const jsonStart = cleaned.indexOf('{');
+            if (jsonStart !== -1) {
+                cleaned = cleaned.slice(jsonStart);
+            }
+        }
+    }
     cleaned = cleaned.trim();
 
     // Remove markdown code fences
