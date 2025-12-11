@@ -116,6 +116,59 @@ export default function CompliancePage() {
         }
     };
 
+    const handleSaveToSamples = async () => {
+        if (!analysis?.report_base64 || !uploadedFile) return;
+
+        try {
+            const baseName = uploadedFile.name.replace(/\.pdf$/i, '') || 'document';
+            const score = analysis.analysis.synthesis?.uk_alignment_score || 0;
+
+            const frameworkNames = selectedFrameworks.map((fw) => {
+                const names: Record<FrameworkKey, string> = {
+                    ICO: 'UK ICO',
+                    DPA: 'UK DPA/GDPR',
+                    EU_AI_ACT: 'EU AI Act',
+                    ISO_42001: 'ISO 42001',
+                };
+                return names[fw];
+            });
+
+            // Convert base64 PDF back to a File for upload
+            const byteCharacters = atob(analysis.report_base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const file = new File([byteArray], `${baseName}_compliance_report.pdf`, {
+                type: 'application/pdf',
+            });
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('name', `${baseName} Compliance Report`);
+            formData.append('score', String(score));
+            formData.append('frameworks', frameworkNames.join(','));
+
+            const res = await fetch('/api/samples', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                console.error('Failed to save sample report:', errText);
+                alert('Failed to save report to samples');
+                return;
+            }
+
+            alert('Report saved to samples (shared across devices)');
+        } catch (e) {
+            console.error('Failed to save report to samples:', e);
+            alert('Failed to save report to samples');
+        }
+    };
+
     const canAnalyze = uploadedFile && selectedFrameworks.length > 0 && !isAnalyzing;
 
     return (
@@ -177,30 +230,7 @@ export default function CompliancePage() {
                                     📄 Download PDF Report
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        const baseName = uploadedFile?.name?.replace(/\.pdf$/i, '') || 'document';
-                                        const score = analysis.analysis.synthesis?.uk_alignment_score || 0;
-                                        const frameworks = selectedFrameworks.map((fw) => {
-                                            const names: Record<FrameworkKey, string> = {
-                                                ICO: 'UK ICO',
-                                                DPA: 'UK DPA/GDPR',
-                                                EU_AI_ACT: 'EU AI Act',
-                                                ISO_42001: 'ISO 42001',
-                                            };
-                                            return names[fw];
-                                        });
-                                        const report: SampleReport = {
-                                            id: Date.now().toString(),
-                                            name: `${baseName} Compliance Report`,
-                                            documentName: uploadedFile?.name || 'document.pdf',
-                                            date: new Date().toISOString().split('T')[0],
-                                            score,
-                                            frameworks,
-                                            pdfBase64: analysis.report_base64!,
-                                        };
-                                        saveReport(report);
-                                        alert('Report saved to samples!');
-                                    }}
+                                    onClick={handleSaveToSamples}
                                     className="btn-secondary"
                                 >
                                     💾 Save to Samples

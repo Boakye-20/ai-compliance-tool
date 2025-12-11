@@ -100,13 +100,17 @@ export function SampleReports() {
     };
 
     const handleUpload = async (file: File) => {
-        if (!file || !uploadName) return;
+        if (!file) return;
         setIsUploading(true);
         try {
+            const baseName = file.name.replace(/\.pdf$/i, '') || 'Sample Report';
+            const effectiveName = uploadName || baseName;
+            const effectiveScore = uploadScore || '60';
+
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('name', uploadName);
-            formData.append('score', uploadScore);
+            formData.append('name', effectiveName);
+            formData.append('score', effectiveScore);
             formData.append('frameworks', 'UK ICO,UK DPA/GDPR,EU AI Act,ISO 42001');
 
             const res = await fetch('/api/samples', {
@@ -227,7 +231,7 @@ export function SampleReports() {
                         />
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={!uploadName || isUploading}
+                            disabled={isUploading}
                             className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isUploading ? (

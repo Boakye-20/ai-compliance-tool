@@ -14,14 +14,22 @@ export interface StaticSampleReport {
 }
 
 export const staticSampleReports: StaticSampleReport[] = [
-    // Example entry - uncomment and modify when you have a sample PDF:
-    // {
-    //     id: 'sample-1',
-    //     name: 'LFR DPIA Compliance Report',
-    //     documentName: 'lfr-dpia.pdf',
-    //     date: '2025-12-11',
-    //     score: 60,
-    //     frameworks: ['UK ICO', 'UK DPA/GDPR', 'EU AI Act', 'ISO 42001'],
-    //     pdfPath: '/samples/lfr-dpia_compliance_report.pdf',
-    // },
+    {
+        id: 'lfr-dpia-portfolio',
+        name: 'LFR DPIA Compliance Report',
+        documentName: 'lfr-dpia.pdf',
+        date: '2025-12-11',
+        score: 61,
+        frameworks: ['UK ICO', 'UK DPA/GDPR', 'EU AI Act', 'ISO 42001'],
+        pdfPath: '/samples/lfr-dpia_compliance_report.pdf',
+    },
+    {
+        id: 'operation-centron-portfolio',
+        name: 'Operation Centron DPIA Compliance Report',
+        documentName: 'operation-centron-dpia.pdf',
+        date: '2025-12-11',
+        score: 42,
+        frameworks: ['UK ICO', 'UK DPA/GDPR', 'EU AI Act', 'ISO 42001'],
+        pdfPath: '/samples/operation-centron-dpia_compliance_report.pdf',
+    },
 ];
