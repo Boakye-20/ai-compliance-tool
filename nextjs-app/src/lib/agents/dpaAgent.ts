@@ -3,55 +3,62 @@ import { callPerplexity, parseJsonResponse } from '../llm/perplexityClient';
 
 function getDPAPrompt(extractedData: ExtractedData): string {
     const docType = extractedData.document_type || 'SYSTEM_SPEC';
-    const topicsCovered = extractedData.compliance_topics_covered || [];
 
     return `
-You are a UK Data Protection Act 2018 / GDPR compliance specialist for AI systems.
+You are a UK Data Protection Act 2018 specialist analyzing AI compliance.
 
-**DOCUMENT TYPE: ${docType}**
+TASK: Create a JSON object with your analysis - NO TEXT before or after the JSON object.
 
-CRITICAL SCORING GUIDANCE:
-- If document_type is "GUIDANCE": Score based on whether it DISCUSSES/RECOMMENDS data protection practices. A playbook covering DPIA, lawful basis, transparency should score HIGH.
-- If document_type is "SYSTEM_SPEC": Score based on whether it DEMONSTRATES specific compliance.
+Document: ${docType} - ${extractedData.use_case || 'Unknown'} 
 
-**DOCUMENT DETAILS:**
-- Document type: ${docType}
-- Topics covered: ${topicsCovered.length > 0 ? topicsCovered.join(', ') : 'None identified'}
-- Use case: ${extractedData.use_case || 'Unknown'}
-- Data types: ${extractedData.data_types?.join(', ') || 'None'}
-- Personal data: ${extractedData.has_personal_data}
+Focus on these GDPR/DPA requirements:
+1. Article 22 - Automated decision-making safeguards
+2. Article 5 - Data principles (fairness, minimization, etc.)
+3. Articles 13/14 - Transparency requirements
+4. Article 35 - Data Protection Impact Assessment
 
-**DOCUMENT TEXT:**
-${extractedData.full_text?.slice(0, 12000) || ''}
+Document excerpt:
+${extractedData.full_text?.slice(0, 6000) || ''}
 
----
-
-Analyze these AI-relevant GDPR/DPA requirements:
-
-1. Article 22 - Automated decision-making
-2. Article 5 - Data principles
-3. Article 13/14 - Transparency
-4. Article 35 - DPIA
-
-Return ONLY valid JSON with this exact structure (no markdown, no explanatory text):
+Return a valid JSON object with this structure:
 {
   "document_type_detected": "${docType}",
-  "article_22_adm": { "status": "MET", "evidence_found": ["quote 1"], "gap": "none", "priority": "LOW" },
-  "article_5_fairness": { "status": "PARTIALLY_MET", "evidence_found": ["quote 1"], "gap": "description", "priority": "MEDIUM" },
-  "article_13_transparency": { "status": "NOT_MET", "evidence_found": [], "gap": "description", "priority": "HIGH" },
-  "article_35_dpia": { "status": "MET", "evidence_found": ["quote 1"], "gap": "none", "priority": "LOW" },
+  "article_22_adm": { 
+    "status": "MET", 
+    "evidence_found": ["Quote from document"],
+    "gap": "none", 
+    "priority": "LOW" 
+  },
+  "article_5_fairness": { 
+    "status": "PARTIALLY_MET", 
+    "evidence_found": ["Quote from document"], 
+    "gap": "Brief description", 
+    "priority": "MEDIUM" 
+  },
+  "article_13_transparency": { 
+    "status": "NOT_MET", 
+    "evidence_found": [], 
+    "gap": "Brief description", 
+    "priority": "HIGH" 
+  },
+  "article_35_dpia": { 
+    "status": "MET", 
+    "evidence_found": ["Quote from document"], 
+    "gap": "none", 
+    "priority": "LOW" 
+  },
   "overall_score": 75,
-  "critical_gaps": ["gap 1", "gap 2"],
-  "strengths": ["strength 1", "strength 2"],
-  "priority_actions": ["action 1", "action 2"],
-  "compliance_summary": "2-3 sentence summary of compliance status"
+  "critical_gaps": ["Gap 1", "Gap 2"],
+  "strengths": ["Strength 1", "Strength 2"],
+  "priority_actions": ["Action 1", "Action 2"],
+  "compliance_summary": "Brief summary of compliance status"
 }
 
-Status values: MET, PARTIALLY_MET, NOT_MET, or EVIDENCE_MISSING.
-Priority values: CRITICAL, HIGH, MEDIUM, or LOW.
-Score range: 0-100 as a number.
+Status options: MET, PARTIALLY_MET, NOT_MET, EVIDENCE_MISSING
+Priority options: CRITICAL, HIGH, MEDIUM, LOW
+Score: 0-100 (number)
 
-IMPORTANT: Return ONLY the JSON object. No markdown code fences. No text before or after.
+IMPORTANT: Generate ONLY the JSON - no explanation text, no markdown, nothing else.
 `;
 }
 
