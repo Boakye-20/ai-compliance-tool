@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from typing import TypedDict, List, Dict, Any, Optional
-from langchain_perplexity import ChatPerplexity
+from langchain_openai import ChatOpenAI
 import os
 from dotenv import load_dotenv
 
@@ -32,21 +32,23 @@ class ComplianceState(TypedDict):
     status_messages: List[str]
 
 
-# Initialize Perplexity models
+# Initialize OpenAI models
 def get_extractor_model():
     """Model used for PDF extraction.
 
-    Use the standard Sonar model which is suitable for fast, lower-cost tasks.
+    GPT-4o has a 128k context window and excels at reading long, dense
+    documents (DPIAs, specs) and extracting structured data reliably.
     """
-    return ChatPerplexity(model="sonar", temperature=0)
+    return ChatOpenAI(model="gpt-4o", temperature=0)
 
 
 def get_analysis_model():
     """Model used for compliance analysis.
 
-    Use the higher-capability Sonar Pro model for better reasoning.
+    GPT-4o-mini is fast and cost-effective for structured scoring against
+    known regulatory frameworks. It receives already-extracted data.
     """
-    return ChatPerplexity(model="sonar-pro", temperature=0)
+    return ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 def supervisor_node(state: ComplianceState) -> ComplianceState:

@@ -267,10 +267,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API key check
-api_key = os.environ.get("PPLX_API_KEY")
+api_key = os.environ.get("OPENAI_API_KEY")
 if not api_key:
-    st.error("🔑 PPLX_API_KEY not set. Create a `.env` file with your API key.")
-    st.code("PPLX_API_KEY=your_key_here")
+    st.error("🔑 OPENAI_API_KEY not set. Create a `.env` file with your API key.")
+    st.code("OPENAI_API_KEY=your_key_here")
     st.stop()
 
 # Add spacing after header

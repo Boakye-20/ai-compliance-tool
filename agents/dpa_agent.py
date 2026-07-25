@@ -1,11 +1,11 @@
-from langchain_perplexity import ChatPerplexity
+from langchain_core.language_models import BaseChatModel
 from typing import Dict, Any
 import json
 import ast
 from prompts.dpa_prompt import get_dpa_prompt
 
 
-def analyze_dpa_compliance(extracted_data: Dict[str, Any], model: ChatPerplexity) -> Dict[str, Any]:
+def analyze_dpa_compliance(extracted_data: Dict[str, Any], model: BaseChatModel) -> Dict[str, Any]:
     """Analyze GDPR/DPA compliance for AI systems"""
     
     prompt = get_dpa_prompt(extracted_data)

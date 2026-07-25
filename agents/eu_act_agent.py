@@ -1,11 +1,11 @@
-from langchain_perplexity import ChatPerplexity
+from langchain_core.language_models import BaseChatModel
 from typing import Dict, Any
 import json
 import ast
 from prompts.eu_act_prompt import get_eu_act_prompt
 
 
-def analyze_eu_act_compliance(extracted_data: Dict[str, Any], model: ChatPerplexity) -> Dict[str, Any]:
+def analyze_eu_act_compliance(extracted_data: Dict[str, Any], model: BaseChatModel) -> Dict[str, Any]:
     """Analyze compliance with EU AI Act"""
     
     prompt = get_eu_act_prompt(extracted_data)

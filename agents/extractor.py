@@ -1,10 +1,10 @@
 import pdfplumber
 from typing import Dict, Any
-from langchain_perplexity import ChatPerplexity
+from langchain_core.language_models import BaseChatModel
 import json
 
 
-def extract_pdf_data(pdf_path: str, model: ChatPerplexity) -> Dict[str, Any]:
+def extract_pdf_data(pdf_path: str, model: BaseChatModel) -> Dict[str, Any]:
     """Extract structured data from PDF using pdfplumber + Perplexity"""
     
     # Extract raw text – capture more pages for richer context

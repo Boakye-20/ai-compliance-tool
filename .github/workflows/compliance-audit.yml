@@ -1,0 +1,63 @@
+# .github/workflows/compliance-audit.yml
+# AI Compliance Audit — CI/CD gatekeeper (kill switch)
+#
+# Runs the local extraction pipeline on a DPIA PDF, submits structured
+# results to the compliance API for scoring, and blocks deployment if
+# the UK Alignment Score falls below a configurable threshold.
+#
+# Required secrets:
+#   COMPLIANCE_API_KEY  — generated in the app's Integrations tab
+#   OPENAI_API_KEY      — for GPT-4o (extraction) + GPT-4o-mini (analysis)
+#
+# Required variables:
+#   COMPLIANCE_API_URL  — e.g. https://ai-compliance-tool-cyan.vercel.app
+#
+# Optional variables:
+#   THRESHOLD           — minimum UK Alignment Score (default: 70)
+
+name: AI Compliance Audit
+
+on:
+  push:
+    paths:
+      - 'model/**'
+      - 'docs/dpia/**'
+      - '.github/workflows/compliance-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  compliance-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install extraction client
+        run: pip install -r cli/requirements.txt
+
+      - name: Extract metadata & submit for scoring
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COMPLIANCE_API_KEY: ${{ secrets.COMPLIANCE_API_KEY }}
+          COMPLIANCE_API_URL: ${{ vars.COMPLIANCE_API_URL }}
+        run: |
+          python cli/compliance_extract.py docs/dpia/system-dpia.pdf \
+            --api-url "$COMPLIANCE_API_URL" \
+            --api-key "$COMPLIANCE_API_KEY" \
+            --source ci \
+            --output score.json
+
+      - name: Enforce alignment threshold (kill switch)
+        env:
+          THRESHOLD: ${{ vars.THRESHOLD }}
+        run: |
+          SCORE=$(jq '.analysis.synthesis.uk_alignment_score' score.json)
+          THRESHOLD="${THRESHOLD:-70}"
+          echo "UK Alignment Score: $SCORE (threshold $THRESHOLD)"
+          if (( $(echo "$SCORE < $THRESHOLD" | bc -l) )); then
+            echo "::error::Compliance score $SCORE is below threshold $THRESHOLD — blocking deployment."
+            exit 1
+          fi

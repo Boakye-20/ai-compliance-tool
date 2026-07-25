@@ -1,7 +1,7 @@
 # Local extraction client — runs the full compliance pipeline on the runner
 # and transmits only structured results. Mirrors the root pipeline deps + requests.
 langgraph
-langchain-perplexity
+langchain-openai
 langchain-core
 pdfplumber
 pydantic

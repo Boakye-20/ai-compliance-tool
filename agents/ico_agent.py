@@ -1,11 +1,11 @@
-from langchain_perplexity import ChatPerplexity
+from langchain_core.language_models import BaseChatModel
 from typing import Dict, Any
 import json
 import ast
 from prompts.ico_prompt import get_ico_prompt
 
 
-def analyze_ico_compliance(extracted_data: Dict[str, Any], model: ChatPerplexity) -> Dict[str, Any]:
+def analyze_ico_compliance(extracted_data: Dict[str, Any], model: BaseChatModel) -> Dict[str, Any]:
     """Analyze compliance with UK ICO AI principles"""
     
     prompt = get_ico_prompt(extracted_data)

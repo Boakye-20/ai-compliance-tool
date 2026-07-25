@@ -1,11 +1,11 @@
-from langchain_perplexity import ChatPerplexity
+from langchain_core.language_models import BaseChatModel
 from typing import Dict, Any
 import json
 import ast
 from prompts.iso_prompt import get_iso_prompt
 
 
-def analyze_iso_compliance(extracted_data: Dict[str, Any], model: ChatPerplexity) -> Dict[str, Any]:
+def analyze_iso_compliance(extracted_data: Dict[str, Any], model: BaseChatModel) -> Dict[str, Any]:
     """Analyze ISO/IEC 42001:2023 compliance"""
     
     prompt = get_iso_prompt(extracted_data)

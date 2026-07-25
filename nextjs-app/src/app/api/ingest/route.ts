@@ -20,6 +20,7 @@ interface IngestPayload {
     iso_result?: any;
     frameworks?: FrameworkCode[];
     status_messages?: string[];
+    source?: 'ci' | 'ingest';
 }
 
 export async function POST(request: NextRequest) {
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
             created_at: new Date().toISOString(),
         };
         saveJob(job);
-        await persistJob(job, 'ingest', orgId);
+        const auditSource = payload.source === 'ci' ? 'ci' : 'ingest';
+        await persistJob(job, auditSource, orgId);
 
         return NextResponse.json({
             job_id: jobId,

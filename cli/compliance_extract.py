@@ -30,7 +30,7 @@ if REPO_ROOT not in sys.path:
 ALL_FRAMEWORKS = ["ICO", "DPA", "EU_AI_ACT", "ISO_42001"]
 
 
-def build_payload(state: dict, frameworks: list, strip_evidence: bool) -> dict:
+def build_payload(state: dict, frameworks: list, strip_evidence: bool, source: str = 'ingest') -> dict:
     """Assemble the residency-safe payload: structured results only, no raw text."""
     extracted = dict(state.get("extracted_data") or {})
     extracted.pop("full_text", None)  # never transmit the raw document dump
@@ -59,6 +59,7 @@ def build_payload(state: dict, frameworks: list, strip_evidence: bool) -> dict:
         return result
 
     return {
+        "source": source,
         "extracted_data": extracted,
         "ico_result": clean_result(state.get("ico_result")),
         "dpa_result": clean_result(state.get("dpa_result")),
@@ -114,6 +115,8 @@ def main():
                         help="Run extraction locally and print the payload WITHOUT transmitting it")
     parser.add_argument("--strip-evidence", action="store_true",
                         help="Strict mode: remove all quoted document excerpts before transmission")
+    parser.add_argument("--source", choices=["ingest", "ci"], default="ingest",
+                        help="Source tag for the audit log entry (default: ingest)")
     args = parser.parse_args()
 
     if not os.path.isfile(args.pdf):
@@ -126,7 +129,7 @@ def main():
 
     print(f"Running local compliance pipeline on {args.pdf} ...", file=sys.stderr)
     state = run_pipeline(args.pdf, frameworks)
-    payload = build_payload(state, frameworks, args.strip_evidence)
+    payload = build_payload(state, frameworks, args.strip_evidence, args.source)
 
     if args.dry_run:
         out = json.dumps(payload, indent=2, default=str)
