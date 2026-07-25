@@ -7,3 +7,4 @@ pdfplumber
 pydantic
 python-dotenv
 requests
+reportlab
