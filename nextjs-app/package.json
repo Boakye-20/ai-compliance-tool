@@ -13,6 +13,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vercel/blob": "^2.0.0",
+    "@vercel/postgres": "^0.10.0",
     "autoprefixer": "^10.0.1",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",

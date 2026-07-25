@@ -717,6 +717,46 @@ function drawFrameworkScores(ctx: PageContext, synthesis: Synthesis): PageContex
     return ctx;
 }
 
+function drawAiBillOfMaterials(ctx: PageContext, extractedData: ExtractedData): PageContext {
+    const models = extractedData.foundation_models || [];
+    const datasets = extractedData.datasets || [];
+    const pii = extractedData.pii_categories || [];
+    const residency = extractedData.region_residency || 'Not specified';
+
+    // Skip the section entirely if nothing was detected.
+    if (models.length === 0 && datasets.length === 0 && pii.length === 0 && residency === 'Not specified') {
+        return ctx;
+    }
+
+    ctx = drawHeading(ctx, 'AI Bill of Materials', 2);
+
+    const rows: Array<[string, string]> = [
+        ['Foundation Models', models.length ? models.join(', ') : 'None detected'],
+        ['Datasets', datasets.length ? datasets.join(', ') : 'None detected'],
+        ['PII / Personal Data', pii.length ? pii.join(', ') : 'None detected'],
+        ['Data Residency', residency],
+    ];
+
+    for (const [label, value] of rows) {
+        ctx = ensureSpace(ctx, 18);
+        ctx.page.drawText(`${label}:`, {
+            x: CONFIG.page.margin,
+            y: ctx.y,
+            size: CONFIG.fonts.body,
+            font: ctx.fonts.bold,
+            color: CONFIG.colors.textLight,
+        });
+        ctx = drawText(ctx, value, {
+            size: CONFIG.fonts.body,
+            x: CONFIG.page.margin + 130,
+            maxWidth: CONFIG.page.width - 2 * CONFIG.page.margin - 130,
+        });
+    }
+
+    ctx.y -= CONFIG.spacing.section;
+    return ctx;
+}
+
 function drawPriorityActions(ctx: PageContext, actions: string[]): PageContext {
     if (actions.length === 0) return ctx;
 
@@ -1052,6 +1092,7 @@ export async function generateReport(
     ctx = drawExecutiveSummary(ctx, synthesis, icoResult, dpaResult, euActResult, isoResult);
     ctx = drawWhatThisMeans(ctx, synthesis);
     ctx = drawFrameworkScores(ctx, synthesis);
+    ctx = drawAiBillOfMaterials(ctx, extractedData);
     ctx = drawPriorityActions(ctx, synthesis.priority_actions);
 
     // Page 2+: Framework Details

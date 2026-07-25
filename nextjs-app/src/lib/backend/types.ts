@@ -26,6 +26,11 @@ export interface ExtractedData {
     risk_indicators: string[];
     compliance_topics_covered: string[];
     keywords: string[];
+    // AI Bill of Materials (BOM) fields
+    foundation_models: string[];
+    datasets: string[];
+    pii_categories: string[];
+    region_residency: string;
     full_text: string;
 }
 

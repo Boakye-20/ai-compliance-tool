@@ -29,7 +29,11 @@ Extract and return ONLY a JSON object:
   "deployment_context": "Where/how AI is deployed (or 'General guidance')",
   "risk_indicators": ["List", "of", "risks", "discussed"],
   "compliance_topics_covered": ["List topics like 'bias testing', 'DPIA', 'transparency', 'human oversight'"],
-  "keywords": ["Key", "terms", "from", "document"]
+  "keywords": ["Key", "terms", "from", "document"],
+  "foundation_models": ["Named AI/ML/foundation models or vendors mentioned, e.g. 'GPT-4', 'Claude', 'Amazon Rekognition', 'in-house CNN' (empty array if none named)"],
+  "datasets": ["Named or described training/reference datasets, e.g. 'PNC watchlist', 'custody images', 'public web crawl' (empty array if none)"],
+  "pii_categories": ["Categories of personal/special-category data processed, e.g. 'facial biometrics', 'names', 'criminal records', 'location' (empty array if none)"],
+  "region_residency": "Where data is stored/processed if stated, e.g. 'UK', 'EU', 'US (AWS us-east-1)', otherwise 'Not specified'"
 }
 
 CRITICAL: Output ONLY valid JSON, no markdown, no explanation.
@@ -41,6 +45,11 @@ CRITICAL: Output ONLY valid JSON, no markdown, no explanation.
 
         return {
             ...extracted,
+            // Defensive defaults: the model may omit newer BOM fields
+            foundation_models: extracted.foundation_models ?? [],
+            datasets: extracted.datasets ?? [],
+            pii_categories: extracted.pii_categories ?? [],
+            region_residency: extracted.region_residency ?? 'Not specified',
             full_text: text.slice(0, 50000),
         };
     } catch (error) {
@@ -57,6 +66,10 @@ CRITICAL: Output ONLY valid JSON, no markdown, no explanation.
             risk_indicators: [],
             compliance_topics_covered: [],
             keywords: [],
+            foundation_models: [],
+            datasets: [],
+            pii_categories: [],
+            region_residency: 'Not specified',
             full_text: text.slice(0, 50000),
         };
     }

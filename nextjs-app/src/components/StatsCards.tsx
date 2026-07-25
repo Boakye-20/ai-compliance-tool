@@ -6,9 +6,10 @@ import { BarChart3, Shield, FileCheck } from 'lucide-react';
 interface StatsCardsProps {
     analysis: AnalysisResponse | null;
     selectedCount: number;
+    onGapsClick?: () => void;
 }
 
-export function StatsCards({ analysis, selectedCount }: StatsCardsProps) {
+export function StatsCards({ analysis, selectedCount, onGapsClick }: StatsCardsProps) {
     const synthesis = analysis?.analysis?.synthesis || {};
     const score = synthesis.uk_alignment_score || 0;
     const gaps = synthesis.total_critical_gaps || 0;
@@ -28,13 +29,17 @@ export function StatsCards({ analysis, selectedCount }: StatsCardsProps) {
                 </div>
             </div>
 
-            <div className="stat-card">
+            <div
+                className={`stat-card ${onGapsClick && gaps > 0 ? 'cursor-pointer hover:border-orange-300' : ''}`}
+                onClick={onGapsClick && gaps > 0 ? onGapsClick : undefined}
+                role={onGapsClick && gaps > 0 ? 'button' : undefined}
+            >
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium text-gray-600">Critical Gaps</p>
                         <p className="text-2xl font-bold text-gray-900">{gaps}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                            {gaps > 0 ? '⚠️ needs attention' : '✓ none found'}
+                            {gaps > 0 ? (onGapsClick ? '⚠️ view breakdown →' : '⚠️ needs attention') : '✓ none found'}
                         </p>
                     </div>
                     <div className="p-3 bg-orange-50 rounded-lg">

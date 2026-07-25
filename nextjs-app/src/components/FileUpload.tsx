@@ -1,24 +1,41 @@
 "use client";
 
 import { useRef } from 'react';
-import { Upload, X, FileText } from 'lucide-react';
+import { Upload, X, FileText, FileJson } from 'lucide-react';
+
+type UploadMode = 'pdf' | 'json';
 
 interface FileUploadProps {
     file: File | null;
     onChange: (file: File | null) => void;
+    mode?: UploadMode;
 }
 
-export function FileUpload({ file, onChange }: FileUploadProps) {
-    const inputRef = useRef<HTMLInputElement>(null);
+const MODE_CONFIG: Record<UploadMode, { accept: string; mime: string; label: string; hint: string }> = {
+    pdf: { accept: '.pdf,application/pdf', mime: 'application/pdf', label: 'PDF', hint: 'PDF files only' },
+    json: { accept: '.json,application/json', mime: 'application/json', label: 'JSON', hint: 'Anonymised metadata payload (.json)' },
+};
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0] || null;
-        if (selectedFile && selectedFile.type === 'application/pdf') {
+export function FileUpload({ file, onChange, mode = 'pdf' }: FileUploadProps) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const cfg = MODE_CONFIG[mode];
+
+    const isValid = (f: File) =>
+        mode === 'pdf'
+            ? f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+            : f.type === 'application/json' || f.name.toLowerCase().endsWith('.json');
+
+    const accept = (selectedFile: File | null) => {
+        if (selectedFile && isValid(selectedFile)) {
             onChange(selectedFile);
         } else if (selectedFile) {
-            alert('Please upload a PDF file only.');
+            alert(`Please upload a ${cfg.label} file only.`);
             onChange(null);
         }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        accept(e.target.files?.[0] || null);
     };
 
     const handleRemoveFile = () => {
@@ -30,12 +47,7 @@ export function FileUpload({ file, onChange }: FileUploadProps) {
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
-        const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && droppedFile.type === 'application/pdf') {
-            onChange(droppedFile);
-        } else {
-            alert('Please upload a PDF file only.');
-        }
+        accept(e.dataTransfer.files[0] || null);
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -55,11 +67,11 @@ export function FileUpload({ file, onChange }: FileUploadProps) {
                     <p className="text-sm text-gray-600">
                         <span className="font-medium">Click to upload</span> or drag and drop
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">PDF files only</p>
+                    <p className="text-xs text-gray-500 mt-1">{cfg.hint}</p>
                     <input
                         ref={inputRef}
                         type="file"
-                        accept=".pdf,application/pdf"
+                        accept={cfg.accept}
                         onChange={handleFileChange}
                         className="hidden"
                     />
@@ -68,7 +80,11 @@ export function FileUpload({ file, onChange }: FileUploadProps) {
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-red-600" />
+                            {mode === 'pdf' ? (
+                                <FileText className="h-5 w-5 text-red-600" />
+                            ) : (
+                                <FileJson className="h-5 w-5 text-indigo-600" />
+                            )}
                             <div>
                                 <p className="text-sm font-medium text-gray-900">{file.name}</p>
                                 <p className="text-xs text-gray-500">

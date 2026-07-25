@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { runCompliancePipeline } from '../../../lib/backend/graph';
-import { saveJob } from '../../../lib/backend/storage';
+import { saveJob, persistJob } from '../../../lib/backend/storage';
 import { AnalysisJob, FrameworkCode } from '../../../lib/backend/types';
 
 // Allow long-running job (Node runtime, not edge)
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
             created_at: new Date().toISOString(),
         };
         saveJob(job);
+        await persistJob(job, 'web');
 
         const stateForResponse = {
             ...state,

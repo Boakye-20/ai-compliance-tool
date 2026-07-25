@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { LayoutDashboard, Boxes, Wrench, Plug, ShieldCheck, Lock } from 'lucide-react';
 import { FileUpload } from '@/components/FileUpload';
 import { FrameworkSelector } from '@/components/FrameworkSelector';
 import { StatsCards } from '@/components/StatsCards';
@@ -8,7 +9,12 @@ import { AnalysisResults } from '@/components/AnalysisResults';
 import { FrameworkDescriptions } from '@/components/FrameworkDescriptions';
 import { EmptyState } from '@/components/EmptyState';
 import { AnalysisProgress } from '@/components/AnalysisProgress';
-import { SampleReports, saveReport, SampleReport } from '@/components/SampleReports';
+import { SampleReports } from '@/components/SampleReports';
+import { AiBomTable } from '@/components/AiBomTable';
+import { GapChecklist } from '@/components/GapChecklist';
+import { RemediationPanel } from '@/components/RemediationKit';
+import { PolicySyncBanner } from '@/components/PolicySyncBanner';
+import { IntegrationsTab } from '@/components/IntegrationsTab';
 
 export type FrameworkKey = "ICO" | "DPA" | "EU_AI_ACT" | "ISO_42001";
 
@@ -26,59 +32,86 @@ export interface AnalysisResponse {
     report_base64?: string;
 }
 
+type TabKey = 'assessment' | 'bom' | 'gaps' | 'integrations';
+type IngestMode = 'pdf' | 'metadata';
+
+const TABS: { key: TabKey; label: string; icon: typeof LayoutDashboard }[] = [
+    { key: 'assessment', label: 'Assessment', icon: LayoutDashboard },
+    { key: 'bom', label: 'AI BOM', icon: Boxes },
+    { key: 'gaps', label: 'Gaps & Remediation', icon: Wrench },
+    { key: 'integrations', label: 'Integrations', icon: Plug },
+];
+
 export default function CompliancePage() {
+    const [activeTab, setActiveTab] = useState<TabKey>('assessment');
+    const [ingestMode, setIngestMode] = useState<IngestMode>('pdf');
     const [selectedFrameworks, setSelectedFrameworks] = useState<FrameworkKey[]>(["ICO", "DPA"]);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [currentStep, setCurrentStep] = useState(0);
+    const [gapsInitialFilter, setGapsInitialFilter] = useState(false);
 
-    // Simulate progress during analysis
+    // Simulate progress during analysis (PDF pipeline only)
     useEffect(() => {
-        if (!isAnalyzing) {
+        if (!isAnalyzing || ingestMode !== 'pdf') {
             setCurrentStep(0);
             return;
         }
 
-        const totalSteps = 4 + selectedFrameworks.length; // extract + route + frameworks + synthesis + report
+        const totalSteps = 4 + selectedFrameworks.length;
         let step = 0;
-
         const progressInterval = setInterval(() => {
             step++;
             setCurrentStep(step);
-
-            // Stop at the last step (Generating Report) and keep it spinning
-            if (step >= totalSteps - 1) {
-                clearInterval(progressInterval);
-            }
-        }, 5000); // Move to next step every 5 seconds (slower to match actual analysis time)
+            if (step >= totalSteps - 1) clearInterval(progressInterval);
+        }, 5000);
 
         return () => clearInterval(progressInterval);
-    }, [isAnalyzing, selectedFrameworks.length]);
+    }, [isAnalyzing, selectedFrameworks.length, ingestMode]);
+
+    const switchMode = (mode: IngestMode) => {
+        setIngestMode(mode);
+        setUploadedFile(null);
+        setError(null);
+    };
 
     const handleAnalyze = async () => {
-        if (!uploadedFile || selectedFrameworks.length === 0) return;
+        if (!uploadedFile) return;
 
         setIsAnalyzing(true);
         setError(null);
 
         try {
-            const formData = new FormData();
-            formData.append('file', uploadedFile);
-            selectedFrameworks.forEach(fw => formData.append('frameworks', fw));
+            if (ingestMode === 'metadata') {
+                // Privacy mode: parse the anonymised JSON payload locally and score it
+                // server-side without ever uploading a raw document.
+                const text = await uploadedFile.text();
+                let payload: any;
+                try {
+                    payload = JSON.parse(text);
+                } catch {
+                    throw new Error('Selected file is not valid JSON.');
+                }
 
-            const response = await fetch(`/api/analyze`, {
-                method: 'POST',
-                body: formData,
-            });
+                const response = await fetch('/api/ingest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) throw new Error(await response.text());
+                setAnalysis(await response.json());
+            } else {
+                if (selectedFrameworks.length === 0) return;
+                const formData = new FormData();
+                formData.append('file', uploadedFile);
+                selectedFrameworks.forEach((fw) => formData.append('frameworks', fw));
 
-            if (!response.ok) {
-                throw new Error(await response.text());
+                const response = await fetch('/api/analyze', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error(await response.text());
+                setAnalysis(await response.json());
             }
-
-            const data: AnalysisResponse = await response.json();
-            setAnalysis(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Analysis failed');
         } finally {
@@ -88,28 +121,20 @@ export default function CompliancePage() {
 
     const handleDownloadReport = () => {
         if (!analysis?.report_base64) return;
-
         try {
             const byteCharacters = atob(analysis.report_base64);
             const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
+            for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
             const byteArray = new Uint8Array(byteNumbers);
             const blob = new Blob([byteArray], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
-
-            // Generate filename based on uploaded file
-            const baseName = uploadedFile?.name?.replace(/\.pdf$/i, '') || 'document';
-            const reportName = `${baseName}_compliance_report.pdf`;
-
+            const baseName = uploadedFile?.name?.replace(/\.(pdf|json)$/i, '') || 'document';
             const a = document.createElement('a');
             a.href = url;
-            a.download = reportName;
+            a.download = `${baseName}_compliance_report.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-
             URL.revokeObjectURL(url);
         } catch (e) {
             console.error('Failed to download report:', e);
@@ -118,31 +143,19 @@ export default function CompliancePage() {
 
     const handleSaveToSamples = async () => {
         if (!analysis?.report_base64 || !uploadedFile) return;
-
         try {
-            const baseName = uploadedFile.name.replace(/\.pdf$/i, '') || 'document';
+            const baseName = uploadedFile.name.replace(/\.(pdf|json)$/i, '') || 'document';
             const score = analysis.analysis.synthesis?.uk_alignment_score || 0;
+            const names: Record<FrameworkKey, string> = {
+                ICO: 'UK ICO', DPA: 'UK DPA/GDPR', EU_AI_ACT: 'EU AI Act', ISO_42001: 'ISO 42001',
+            };
+            const frameworkNames = selectedFrameworks.map((fw) => names[fw]);
 
-            const frameworkNames = selectedFrameworks.map((fw) => {
-                const names: Record<FrameworkKey, string> = {
-                    ICO: 'UK ICO',
-                    DPA: 'UK DPA/GDPR',
-                    EU_AI_ACT: 'EU AI Act',
-                    ISO_42001: 'ISO 42001',
-                };
-                return names[fw];
-            });
-
-            // Convert base64 PDF back to a File for upload
             const byteCharacters = atob(analysis.report_base64);
             const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
+            for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
             const byteArray = new Uint8Array(byteNumbers);
-            const file = new File([byteArray], `${baseName}_compliance_report.pdf`, {
-                type: 'application/pdf',
-            });
+            const file = new File([byteArray], `${baseName}_compliance_report.pdf`, { type: 'application/pdf' });
 
             const formData = new FormData();
             formData.append('file', file);
@@ -150,18 +163,12 @@ export default function CompliancePage() {
             formData.append('score', String(score));
             formData.append('frameworks', frameworkNames.join(','));
 
-            const res = await fetch('/api/samples', {
-                method: 'POST',
-                body: formData,
-            });
-
+            const res = await fetch('/api/samples', { method: 'POST', body: formData });
             if (!res.ok) {
-                const errText = await res.text();
-                console.error('Failed to save sample report:', errText);
+                console.error('Failed to save sample report:', await res.text());
                 alert('Failed to save report to samples');
                 return;
             }
-
             alert('Report saved to samples (shared across devices)');
         } catch (e) {
             console.error('Failed to save report to samples:', e);
@@ -169,100 +176,181 @@ export default function CompliancePage() {
         }
     };
 
-    const canAnalyze = uploadedFile && selectedFrameworks.length > 0 && !isAnalyzing;
+    const goToGaps = () => {
+        setGapsInitialFilter(true);
+        setActiveTab('gaps');
+    };
+
+    const canAnalyze =
+        uploadedFile && !isAnalyzing && (ingestMode === 'metadata' || selectedFrameworks.length > 0);
+
+    const a = analysis?.analysis;
 
     return (
         <div className="max-w-7xl mx-auto px-8">
-            {/* Filter row */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-700 mb-3">Select Frameworks</h3>
-                        <FrameworkSelector
-                            selected={selectedFrameworks}
-                            onChange={setSelectedFrameworks}
-                        />
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-700 mb-3">Upload Document</h3>
-                        <FileUpload
-                            file={uploadedFile}
-                            onChange={setUploadedFile}
-                        />
-                    </div>
-                </div>
+            {/* Live regulatory sync */}
+            <PolicySyncBanner />
+
+            {/* Workspace tabs */}
+            <div className="flex items-center gap-1 border-b border-gray-200 mb-6 overflow-x-auto">
+                {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`nav-tab rounded-none border-b-2 -mb-px ${
+                                activeTab === tab.key
+                                    ? 'active border-primary'
+                                    : 'border-transparent'
+                            }`}
+                        >
+                            <Icon className="w-4 h-4" />
+                            {tab.label}
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* Framework descriptions */}
-            <FrameworkDescriptions />
-
-            {/* Sample Reports for portfolio */}
-            <SampleReports />
-
-            {/* Stats cards */}
-            <StatsCards analysis={analysis} selectedCount={selectedFrameworks.length} />
-
-            <div className="mt-6">
-                {/* Progress indicator */}
-                <AnalysisProgress
-                    selectedFrameworks={selectedFrameworks}
-                    currentStep={currentStep}
-                    isAnalyzing={isAnalyzing}
-                />
-
-                {/* Action buttons */}
-                {uploadedFile && (
-                    <div className="flex gap-3 mb-6">
-                        <button
-                            onClick={handleAnalyze}
-                            disabled={!canAnalyze}
-                            className="btn-primary flex items-center gap-2"
-                        >
-                            🚀 {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
-                        </button>
-
-                        {analysis?.report_base64 && (
-                            <>
+            {/* ===== Assessment tab ===== */}
+            {activeTab === 'assessment' && (
+                <>
+                    <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                        {/* Ingestion mode toggle */}
+                        <div className="mb-5">
+                            <h3 className="text-sm font-medium text-gray-700 mb-2">Ingestion Mode</h3>
+                            <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                                 <button
-                                    onClick={handleDownloadReport}
-                                    className="btn-secondary"
+                                    onClick={() => switchMode('pdf')}
+                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                        ingestMode === 'pdf' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
+                                    }`}
                                 >
-                                    📄 Download PDF Report
+                                    <ShieldCheck className="w-4 h-4" /> Standard PDF Upload
                                 </button>
                                 <button
-                                    onClick={handleSaveToSamples}
-                                    className="btn-secondary"
+                                    onClick={() => switchMode('metadata')}
+                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                        ingestMode === 'metadata' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
+                                    }`}
                                 >
-                                    💾 Save to Samples
+                                    <Lock className="w-4 h-4" /> Metadata Payload (Privacy Mode)
                                 </button>
-                            </>
-                        )}
-                    </div>
-                )}
+                            </div>
+                            {ingestMode === 'metadata' && (
+                                <p className="text-xs text-gray-500 mt-2 max-w-2xl">
+                                    Privacy mode scores a lightweight, anonymised JSON payload — extracted locally by the
+                                    compliance CLI — so raw documents never leave your environment. Ideal for public sector
+                                    and enterprise risk teams with data-residency requirements.
+                                </p>
+                            )}
+                        </div>
 
-                {/* Error display */}
-                {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">Analysis Failed</h3>
-                                <div className="mt-2 text-sm text-red-700">
-                                    <p>{error}</p>
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-700 mb-3">Select Frameworks</h3>
+                                <FrameworkSelector selected={selectedFrameworks} onChange={setSelectedFrameworks} />
+                                {ingestMode === 'metadata' && (
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        Frameworks are derived from the payload in privacy mode.
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                                    {ingestMode === 'pdf' ? 'Upload Document' : 'Upload Metadata Payload'}
+                                </h3>
+                                <FileUpload
+                                    file={uploadedFile}
+                                    onChange={setUploadedFile}
+                                    mode={ingestMode === 'pdf' ? 'pdf' : 'json'}
+                                />
                             </div>
                         </div>
                     </div>
-                )}
 
-                {/* Results or empty state */}
-                {analysis ? (
-                    <AnalysisResults analysis={analysis} />
-                ) : (
-                    <EmptyState />
-                )}
-            </div>
+                    <FrameworkDescriptions />
+                    <SampleReports />
+                    <StatsCards analysis={analysis} selectedCount={selectedFrameworks.length} onGapsClick={goToGaps} />
 
-            {/* Footer */}
+                    <div className="mt-6">
+                        {ingestMode === 'pdf' && (
+                            <AnalysisProgress
+                                selectedFrameworks={selectedFrameworks}
+                                currentStep={currentStep}
+                                isAnalyzing={isAnalyzing}
+                            />
+                        )}
+
+                        {uploadedFile && (
+                            <div className="flex gap-3 mb-6">
+                                <button onClick={handleAnalyze} disabled={!canAnalyze} className="btn-primary flex items-center gap-2">
+                                    🚀 {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
+                                </button>
+                                {analysis?.report_base64 && (
+                                    <>
+                                        <button onClick={handleDownloadReport} className="btn-secondary">
+                                            📄 Download DPIA Report
+                                        </button>
+                                        <button onClick={handleSaveToSamples} className="btn-secondary">
+                                            💾 Save to Samples
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                                <h3 className="text-sm font-medium text-red-800">Analysis Failed</h3>
+                                <p className="mt-2 text-sm text-red-700">{error}</p>
+                            </div>
+                        )}
+
+                        {analysis ? <AnalysisResults analysis={analysis} /> : <EmptyState />}
+                    </div>
+                </>
+            )}
+
+            {/* ===== AI BOM tab ===== */}
+            {activeTab === 'bom' && (
+                <div className="space-y-6">
+                    <StatsCards analysis={analysis} selectedCount={selectedFrameworks.length} onGapsClick={goToGaps} />
+                    <AiBomTable extractedData={a?.extracted_data} />
+                </div>
+            )}
+
+            {/* ===== Gaps & Remediation tab ===== */}
+            {activeTab === 'gaps' && (
+                <div className="space-y-6">
+                    {a ? (
+                        <>
+                            <GapChecklist
+                                icoResult={a.ico_result}
+                                dpaResult={a.dpa_result}
+                                euActResult={a.eu_act_result}
+                                isoResult={a.iso_result}
+                                initialGapsOnly={gapsInitialFilter}
+                            />
+                            <RemediationPanel
+                                icoResult={a.ico_result}
+                                dpaResult={a.dpa_result}
+                                euActResult={a.eu_act_result}
+                                isoResult={a.iso_result}
+                                synthesis={a.synthesis}
+                            />
+                        </>
+                    ) : (
+                        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+                            Run an analysis on the Assessment tab to see gaps and remediation kits.
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ===== Integrations tab ===== */}
+            {activeTab === 'integrations' && <IntegrationsTab />}
+
             <footer className="text-center text-gray-400 text-xs py-8 mt-8">
                 <p>AI Governance Hub • Built by Paul Kwarteng</p>
                 <p className="mt-1">This tool is for informational purposes only and does not constitute legal advice.</p>

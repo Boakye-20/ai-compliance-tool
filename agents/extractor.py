@@ -38,7 +38,11 @@ Return ONLY valid JSON with the following keys:
   "deployment_context": "Where/how AI is deployed (or 'General guidance')",
   "risk_indicators": ["List", "of", "risks", "discussed"],
   "compliance_topics_covered": ["Topics like 'bias testing', 'DPIA', 'transparency'"],
-  "keywords": ["Key", "terms", "from", "document"]
+  "keywords": ["Key", "terms", "from", "document"],
+  "foundation_models": ["Named AI/ML/foundation models or vendors, e.g. 'GPT-4', 'Amazon Rekognition' (empty if none)"],
+  "datasets": ["Named/described training or reference datasets (empty if none)"],
+  "pii_categories": ["Categories of personal/special-category data, e.g. 'facial biometrics', 'criminal records' (empty if none)"],
+  "region_residency": "Where data is stored/processed if stated (e.g. 'UK', 'EU', 'US'), otherwise 'Not specified'"
 }}
 
 CRITICAL: Output ONLY JSON – no markdown, no commentary.
@@ -73,8 +77,18 @@ CRITICAL: Output ONLY JSON – no markdown, no commentary.
             "deployment_context": "Unknown",
             "risk_indicators": [],
             "compliance_topics_covered": [],
-            "keywords": []
+            "keywords": [],
+            "foundation_models": [],
+            "datasets": [],
+            "pii_categories": [],
+            "region_residency": "Not specified"
         }
-    
+
+    # Defensive defaults: older/omitting model responses may lack the BOM fields
+    extracted.setdefault("foundation_models", [])
+    extracted.setdefault("datasets", [])
+    extracted.setdefault("pii_categories", [])
+    extracted.setdefault("region_residency", "Not specified")
+
     extracted["full_text"] = text[:50000]
     return extracted

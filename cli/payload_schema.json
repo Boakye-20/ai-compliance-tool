@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComplianceIngestPayload",
+  "description": "Residency-safe payload POSTed to /api/ingest. Contains structured analysis results only — never the raw document text.",
+  "type": "object",
+  "required": ["extracted_data"],
+  "properties": {
+    "extracted_data": {
+      "type": "object",
+      "description": "Structural metadata about the AI system. full_text is intentionally omitted.",
+      "properties": {
+        "document_type": { "type": "string", "enum": ["GUIDANCE", "SYSTEM_SPEC", "STRATEGY", "ASSESSMENT", "UNKNOWN"] },
+        "use_case": { "type": "string" },
+        "system_type": { "type": "string" },
+        "data_types": { "type": "array", "items": { "type": "string" } },
+        "has_personal_data": { "type": "boolean" },
+        "has_biometric_data": { "type": "boolean" },
+        "has_human_oversight": { "type": "boolean" },
+        "deployment_context": { "type": "string" },
+        "risk_indicators": { "type": "array", "items": { "type": "string" } },
+        "compliance_topics_covered": { "type": "array", "items": { "type": "string" } },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "foundation_models": { "type": "array", "items": { "type": "string" } },
+        "datasets": { "type": "array", "items": { "type": "string" } },
+        "pii_categories": { "type": "array", "items": { "type": "string" } },
+        "region_residency": { "type": "string" }
+      }
+    },
+    "ico_result": { "$ref": "#/definitions/frameworkResult" },
+    "dpa_result": { "$ref": "#/definitions/frameworkResult" },
+    "eu_act_result": { "$ref": "#/definitions/frameworkResult" },
+    "iso_result": { "$ref": "#/definitions/frameworkResult" },
+    "frameworks": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["ICO", "DPA", "EU_AI_ACT", "ISO_42001"] }
+    },
+    "status_messages": { "type": "array", "items": { "type": "string" } }
+  },
+  "definitions": {
+    "frameworkResult": {
+      "type": ["object", "null"],
+      "description": "Per-framework analysis result. score drives the weighted UK Alignment Score.",
+      "properties": {
+        "framework": { "type": "string" },
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "critical_gaps_count": { "type": "integer", "minimum": 0 },
+        "critical_gaps": { "type": "array", "items": { "type": "string" } },
+        "priority_actions": { "type": "array", "items": { "type": "string" } },
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "compliance_summary": { "type": "string" }
+      }
+    }
+  }
+}
