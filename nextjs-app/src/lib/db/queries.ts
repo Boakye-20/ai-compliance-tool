@@ -35,6 +35,7 @@ export interface AuditRecord {
     documentType: string | null;
     synthesis: unknown;
     extractedData: any;
+    reportBase64: string | null;
 }
 
 function inventoryRows(extractedData: any): Array<[string, string, string]> {
@@ -52,8 +53,8 @@ function inventoryRows(extractedData: any): Array<[string, string, string]> {
 export async function persistAudit(rec: AuditRecord): Promise<void> {
     await sql.query(
         `INSERT INTO audit_logs
-            (id, org_id, source, uk_alignment_score, total_critical_gaps, frameworks, document_type, synthesis, extracted_data)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (id, org_id, source, uk_alignment_score, total_critical_gaps, frameworks, document_type, synthesis, extracted_data, report_base64)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO NOTHING`,
         [
             rec.id,
@@ -65,6 +66,7 @@ export async function persistAudit(rec: AuditRecord): Promise<void> {
             rec.documentType,
             JSON.stringify(rec.synthesis ?? null),
             JSON.stringify(rec.extractedData ?? null),
+            rec.reportBase64,
         ],
     );
 
@@ -162,4 +164,47 @@ export async function validateApiKey(rawKey: string): Promise<string | null> {
     if (!result.rows[0]) return null;
     await sql.query(`UPDATE api_keys SET last_used_at = now() WHERE key_hash = $1`, [hashKey(rawKey)]);
     return result.rows[0].org_id;
+}
+
+// ---------------------------------------------------------------------------
+// Report retrieval (durable alternative to the in-memory job store)
+// ---------------------------------------------------------------------------
+
+export async function getReportBase64(auditId: string): Promise<string | null> {
+    const result = await sql.query<{ report_base64: string | null }>(
+        `SELECT report_base64 FROM audit_logs WHERE id = $1 LIMIT 1`,
+        [auditId],
+    );
+    return result.rows[0]?.report_base64 ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting
+// ---------------------------------------------------------------------------
+
+// Fixed-window counter. Records the request first, then counts how many
+// requests share the same bucket key inside the trailing window. Returns
+// allowed = false once the count exceeds the limit. Old rows are pruned
+// opportunistically so the table does not grow without bound.
+export async function checkRateLimit(
+    bucketKey: string,
+    limit: number,
+    windowMinutes: number,
+): Promise<{ allowed: boolean; count: number }> {
+    await sql.query(`INSERT INTO rate_limit_events (bucket_key) VALUES ($1)`, [bucketKey]);
+
+    const result = await sql.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM rate_limit_events
+         WHERE bucket_key = $1 AND created_at > now() - ($2 || ' minutes')::interval`,
+        [bucketKey, windowMinutes],
+    );
+    const count = parseInt(result.rows[0]?.count ?? '0', 10);
+
+    // Best-effort cleanup of events older than a day, run occasionally rather
+    // than on every call, so this stays cheap.
+    if (Math.random() < 0.02) {
+        await sql.query(`DELETE FROM rate_limit_events WHERE created_at < now() - interval '1 day'`).catch(() => {});
+    }
+
+    return { allowed: count <= limit, count };
 }

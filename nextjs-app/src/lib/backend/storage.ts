@@ -42,6 +42,7 @@ export async function persistJob(
             extractedData: state.extracted_data
                 ? { ...state.extracted_data, full_text: undefined }
                 : null,
+            reportBase64: job.report_bytes ? Buffer.from(job.report_bytes).toString('base64') : null,
         });
     } catch (e) {
         console.error('persistJob failed (non-fatal):', e);

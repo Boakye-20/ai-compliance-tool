@@ -50,6 +50,19 @@ export const SCHEMA_STATEMENTS: string[] = [
         last_used_at TIMESTAMPTZ
     )`,
     `CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys (key_hash) WHERE revoked = false`,
+
+    // Generated report bytes, stored base64-encoded so a report survives past the
+    // lifetime of a single serverless invocation and can be re-downloaded later.
+    `ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS report_base64 TEXT`,
+
+    // Fixed-window rate limiting, backed by Postgres so the count holds across
+    // separate serverless instances rather than resetting on every cold start.
+    `CREATE TABLE IF NOT EXISTS rate_limit_events (
+        id          BIGSERIAL PRIMARY KEY,
+        bucket_key  TEXT NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_rate_limit_bucket_time ON rate_limit_events (bucket_key, created_at DESC)`,
 ];
 
 const FRAMEWORK_SEED: Array<[string, string, number]> = [
