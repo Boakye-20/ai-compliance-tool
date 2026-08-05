@@ -6,12 +6,20 @@ import { FileUpload } from '@/components/FileUpload';
 import { FrameworkSelector } from '@/components/FrameworkSelector';
 import { StatsCards } from '@/components/StatsCards';
 import { AnalysisResults } from '@/components/AnalysisResults';
+import { MultiDocumentUpload } from '@/components/MultiDocumentUpload';
+import { QuizSelfAssessment } from '@/components/QuizSelfAssessment';
+import { ActionPlan } from '@/components/ActionPlan';
+import { generateClientSidePdf } from '@/lib/pdfGenerator';
 import { FrameworkDescriptions } from '@/components/FrameworkDescriptions';
 import { EmptyState } from '@/components/EmptyState';
 import { AnalysisProgress } from '@/components/AnalysisProgress';
+import { AnalysisStepper } from '@/components/AnalysisStepper';
 import { SampleReports } from '@/components/SampleReports';
 import { AiBomTable } from '@/components/AiBomTable';
+import { SystemInventory } from '@/components/SystemInventory';
 import { GapChecklist } from '@/components/GapChecklist';
+import { CrossFrameworkGaps } from '@/components/CrossFrameworkGaps';
+import { ComplianceMatrixView } from '@/components/ComplianceMatrixView';
 import { RemediationPanel } from '@/components/RemediationKit';
 import { PolicySyncBanner } from '@/components/PolicySyncBanner';
 import { IntegrationsTab } from '@/components/IntegrationsTab';
@@ -33,7 +41,7 @@ export interface AnalysisResponse {
 }
 
 type TabKey = 'assessment' | 'bom' | 'gaps' | 'integrations';
-type IngestMode = 'pdf' | 'metadata';
+type IngestMode = 'pdf' | 'metadata' | 'quiz';
 
 const TABS: { key: TabKey; label: string; icon: typeof LayoutDashboard }[] = [
     { key: 'assessment', label: 'Assessment', icon: LayoutDashboard },
@@ -47,6 +55,8 @@ export default function CompliancePage() {
     const [ingestMode, setIngestMode] = useState<IngestMode>('pdf');
     const [selectedFrameworks, setSelectedFrameworks] = useState<FrameworkKey[]>(["ICO", "DPA"]);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [uploadedFiles, setUploadedFiles] = useState<Array<{file: File, docType: string}>>([]);
+    const [quizPayload, setQuizPayload] = useState<any>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -74,11 +84,15 @@ export default function CompliancePage() {
     const switchMode = (mode: IngestMode) => {
         setIngestMode(mode);
         setUploadedFile(null);
+        setUploadedFiles([]);
+        setQuizPayload(null);
         setError(null);
     };
 
     const handleAnalyze = async () => {
-        if (!uploadedFile) return;
+        if (ingestMode === 'pdf' && uploadedFiles.length === 0) return;
+        if (ingestMode === 'metadata' && !uploadedFile) return;
+        if (ingestMode === 'quiz' && !quizPayload) return;
 
         setIsAnalyzing(true);
         setError(null);
@@ -87,7 +101,7 @@ export default function CompliancePage() {
             if (ingestMode === 'metadata') {
                 // Privacy mode: parse the anonymised JSON payload locally and score it
                 // server-side without ever uploading a raw document.
-                const text = await uploadedFile.text();
+                const text = await uploadedFile!.text();
                 let payload: any;
                 try {
                     payload = JSON.parse(text);
@@ -102,10 +116,21 @@ export default function CompliancePage() {
                 });
                 if (!response.ok) throw new Error(await response.text());
                 setAnalysis(await response.json());
+            } else if (ingestMode === 'quiz') {
+                const response = await fetch('/api/ingest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(quizPayload),
+                });
+                if (!response.ok) throw new Error(await response.text());
+                setAnalysis(await response.json());
             } else {
                 if (selectedFrameworks.length === 0) return;
                 const formData = new FormData();
-                formData.append('file', uploadedFile);
+                uploadedFiles.forEach((f) => {
+                    formData.append('files', f.file);
+                    formData.append('fileTypes', f.docType);
+                });
                 selectedFrameworks.forEach((fw) => formData.append('frameworks', fw));
 
                 const response = await fetch('/api/analyze', { method: 'POST', body: formData });
@@ -117,6 +142,12 @@ export default function CompliancePage() {
         } finally {
             setIsAnalyzing(false);
         }
+    };
+
+    const handleDownloadBrowserPdf = () => {
+        if (!analysis) return;
+        const baseName = uploadedFile?.name?.replace(/\.(pdf|json)$/i, '') || 'compliance';
+        generateClientSidePdf(analysis, `${baseName}_summary.pdf`);
     };
 
     const handleDownloadReport = () => {
@@ -182,7 +213,11 @@ export default function CompliancePage() {
     };
 
     const canAnalyze =
-        uploadedFile && !isAnalyzing && (ingestMode === 'metadata' || selectedFrameworks.length > 0);
+        !isAnalyzing && (
+            (ingestMode === 'metadata' && uploadedFile) || 
+            (ingestMode === 'pdf' && uploadedFiles.length > 0 && selectedFrameworks.length > 0) ||
+            (ingestMode === 'quiz' && quizPayload !== null)
+        );
 
     const a = analysis?.analysis;
 
@@ -236,6 +271,14 @@ export default function CompliancePage() {
                                 >
                                     <Lock className="w-4 h-4" /> Metadata Payload (Privacy Mode)
                                 </button>
+                                <button
+                                    onClick={() => switchMode('quiz')}
+                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                        ingestMode === 'quiz' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
+                                    }`}
+                                >
+                                    <LayoutDashboard className="w-4 h-4" /> Quick Self-Assessment
+                                </button>
                             </div>
                             {ingestMode === 'metadata' && (
                                 <p className="text-xs text-gray-500 mt-2 max-w-2xl">
@@ -258,13 +301,23 @@ export default function CompliancePage() {
                             </div>
                             <div>
                                 <h3 className="text-sm font-medium text-gray-700 mb-3">
-                                    {ingestMode === 'pdf' ? 'Upload Document' : 'Upload Metadata Payload'}
+                                    {ingestMode === 'pdf' ? 'Upload Evidence Documents' : ingestMode === 'metadata' ? 'Upload Metadata Payload' : 'System Details'}
                                 </h3>
-                                <FileUpload
-                                    file={uploadedFile}
-                                    onChange={setUploadedFile}
-                                    mode={ingestMode === 'pdf' ? 'pdf' : 'json'}
-                                />
+                                {ingestMode === 'pdf' && (
+                                    <MultiDocumentUpload files={uploadedFiles} onChange={setUploadedFiles} />
+                                )}
+                                {ingestMode === 'metadata' && (
+                                    <FileUpload file={uploadedFile} onChange={setUploadedFile} mode="json" />
+                                )}
+                                {ingestMode === 'quiz' && (
+                                    <QuizSelfAssessment 
+                                        onSubmit={(payload) => {
+                                            setQuizPayload(payload);
+                                            // The handleAnalyze button handles submission
+                                        }} 
+                                        onCancel={() => switchMode('pdf')} 
+                                    />
+                                )}
                             </div>
                         </div>
                     </div>
@@ -275,14 +328,13 @@ export default function CompliancePage() {
 
                     <div className="mt-6">
                         {ingestMode === 'pdf' && (
-                            <AnalysisProgress
-                                selectedFrameworks={selectedFrameworks}
-                                currentStep={currentStep}
+                            <AnalysisStepper
                                 isAnalyzing={isAnalyzing}
+                                selectedFrameworks={selectedFrameworks}
                             />
                         )}
 
-                        {uploadedFile && (
+                        {((ingestMode === 'pdf' && uploadedFiles.length > 0) || (ingestMode === 'metadata' && uploadedFile) || (ingestMode === 'quiz' && quizPayload)) && (
                             <div className="flex gap-3 mb-6">
                                 <button onClick={handleAnalyze} disabled={!canAnalyze} className="btn-primary flex items-center gap-2">
                                     🚀 {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
@@ -290,7 +342,10 @@ export default function CompliancePage() {
                                 {analysis?.report_base64 && (
                                     <>
                                         <button onClick={handleDownloadReport} className="btn-secondary">
-                                            📄 Download DPIA Report
+                                            📄 Download Full Report (PDF)
+                                        </button>
+                                        <button onClick={handleDownloadBrowserPdf} className="btn-secondary">
+                                            📊 Download Summary (PDF)
                                         </button>
                                         <button onClick={handleSaveToSamples} className="btn-secondary">
                                             💾 Save to Samples
@@ -316,6 +371,7 @@ export default function CompliancePage() {
             {activeTab === 'bom' && (
                 <div className="space-y-6">
                     <StatsCards analysis={analysis} selectedCount={selectedFrameworks.length} onGapsClick={goToGaps} />
+                    <SystemInventory extractedData={a?.extracted_data} />
                     <AiBomTable extractedData={a?.extracted_data} />
                 </div>
             )}
@@ -325,6 +381,25 @@ export default function CompliancePage() {
                 <div className="space-y-6">
                     {a ? (
                         <>
+                            {/* Cross-framework gap correlations */}
+                            {a.synthesis?.cross_framework_gaps?.length > 0 && (
+                                <CrossFrameworkGaps gaps={a.synthesis.cross_framework_gaps} />
+                            )}
+
+                            {/* Action Plan */}
+                            {a.synthesis?.action_plan?.length > 0 && (
+                                <ActionPlan actionPlan={a.synthesis.action_plan} />
+                            )}
+
+                            {/* Searchable compliance matrix */}
+                            <ComplianceMatrixView
+                                icoResult={a.ico_result}
+                                dpaResult={a.dpa_result}
+                                euActResult={a.eu_act_result}
+                                isoResult={a.iso_result}
+                                selectedFrameworks={selectedFrameworks}
+                            />
+
                             <GapChecklist
                                 icoResult={a.ico_result}
                                 dpaResult={a.dpa_result}

@@ -46,25 +46,36 @@ export async function POST(request: NextRequest) {
         }
 
         const formData = await request.formData();
-        const file = formData.get('file') as File | null;
+        
+        // Support either 'files' (multiple) or 'file' (legacy single)
+        let files = formData.getAll('files') as File[];
+        if (files.length === 0) {
+            const singleFile = formData.get('file') as File | null;
+            if (singleFile) files = [singleFile];
+        }
+
         const frameworksRaw = formData.getAll('frameworks') as string[];
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        if (files.length === 0) {
+            return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
         }
         if (!frameworksRaw.length) {
             return NextResponse.json({ error: 'At least one framework must be selected' }, { status: 400 });
         }
 
         const frameworks = frameworksRaw as FrameworkCode[];
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        const fileCheck = validatePdfUpload(file, buffer);
-        if (!fileCheck.valid) {
-            return NextResponse.json({ error: fileCheck.reason }, { status: 400 });
+        
+        const buffers: Buffer[] = [];
+        for (const file of files) {
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const fileCheck = validatePdfUpload(file, buffer);
+            if (!fileCheck.valid) {
+                return NextResponse.json({ error: `File ${file.name}: ${fileCheck.reason}` }, { status: 400 });
+            }
+            buffers.push(buffer);
         }
 
-        const state = await runCompliancePipeline(buffer, frameworks);
+        const state = await runCompliancePipeline(buffers, frameworks);
 
         const jobId = uuidv4();
         const job: AnalysisJob = {

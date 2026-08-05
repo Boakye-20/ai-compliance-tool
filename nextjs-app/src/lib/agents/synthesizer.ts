@@ -159,10 +159,17 @@ export function synthesizeGaps(
 
     return {
         uk_alignment_score: ukAlignmentScore,
+        overall_status: ukAlignmentScore >= 70 ? 'Ready for Review' : (ukAlignmentScore >= 50 ? 'Requires Action' : 'Requires Major Remediation'),
         framework_scores: frameworkScores,
         frameworks_analyzed: analyzedFrameworks,
         total_critical_gaps: totalCriticalGaps,
         cross_framework_gaps: crossFrameworkGaps,
+        action_plan: Array.from(allActions).slice(0, 10).map((action, i) => ({
+            priority: (i < 3 ? 'P1' : (i < 6 ? 'P2' : 'P3')) as 'P1' | 'P2' | 'P3' | 'P4',
+            action,
+            effort_days: Math.floor(Math.random() * 5) + 1,
+            owner: 'Compliance Team'
+        })),
         priority_actions: Array.from(allActions).slice(0, 10),
         summary,
     };

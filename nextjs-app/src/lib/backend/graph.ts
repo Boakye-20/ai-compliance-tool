@@ -1,5 +1,5 @@
 import { ComplianceState, FrameworkCode } from './types';
-import { extractPdfData } from '../agents/extractor';
+import { extractMultiplePdfsData } from '../agents/extractor';
 import { routeFrameworks } from '../agents/router';
 import { analyzeICOCompliance } from '../agents/icoAgent';
 import { analyzeDPACompliance } from '../agents/dpaAgent';
@@ -9,7 +9,7 @@ import { synthesizeGaps } from '../agents/synthesizer';
 import { generateReport } from '../pdf/generateReport';
 
 export async function runCompliancePipeline(
-    pdfBuffer: Buffer,
+    pdfBuffers: Buffer[],
     selectedFrameworks: FrameworkCode[],
     onStatus?: (msg: string) => void,
 ): Promise<ComplianceState> {
@@ -34,7 +34,7 @@ export async function runCompliancePipeline(
     try {
         // Extract
         log('📄 Extracting document data...');
-        state.extracted_data = await extractPdfData(pdfBuffer);
+        state.extracted_data = await extractMultiplePdfsData(pdfBuffers);
         log(`✅ Extracted: ${state.extracted_data.document_type} document`);
 
         // Route

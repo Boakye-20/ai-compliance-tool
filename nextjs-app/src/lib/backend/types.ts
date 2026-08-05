@@ -86,12 +86,21 @@ export interface CrossFrameworkGap {
     recommendation: string;
 }
 
+export interface ActionPlanItem {
+    priority: 'P1' | 'P2' | 'P3' | 'P4';
+    action: string;
+    effort_days: number;
+    owner: string;
+}
+
 export interface Synthesis {
     uk_alignment_score: number;
+    overall_status: string;
     framework_scores: Record<string, number>;
     frameworks_analyzed: string[];
     total_critical_gaps: number;
     cross_framework_gaps: CrossFrameworkGap[];
+    action_plan: ActionPlanItem[];
     priority_actions: string[];
     summary: string;
 }
