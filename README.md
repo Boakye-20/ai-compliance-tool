@@ -8,7 +8,7 @@ final agent combines their findings into a single score and a priority action
 list. You can watch the agents work as they go, and download the result as a PDF.
 
 Module 2 of the AI Governance Hub. Module 1 is the
-[UK AI Policy Tracker](https://uk-ai-policy-tracker-next.vercel.app/) — together they cover
+[UK AI Policy Tracker](https://uk-ai-policy-tracker-next.vercel.app/). Together they cover
 policy discovery, then compliance evaluation.
 
 ## Frameworks checked
@@ -66,7 +66,7 @@ Streamlit for the interface, and pdfplumber + reportlab for reading and writing 
 Score = (ICO × 0.4) + (DPA × 0.3) + (ISO × 0.2) + (EU AI Act × 0.1)
 ```
 
-The UK has no dedicated AI Act yet — the first Bill is delayed to H2 2026 — so
+The UK has no dedicated AI Act yet (the first Bill is delayed to H2 2026), so
 UK governance currently rests on ICO principles, the DPA and GDPR for data, and
 ISO standards. The weighting reflects that, which is why the EU AI Act counts for
 least here despite being the most detailed instrument.
