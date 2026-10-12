@@ -192,4 +192,4 @@ docker run -p 3000:3000 -e BACKEND_URL=http://localhost:8000 ai-compliance-front
 
 ## License
 
-Part of the AI Governance Hub by Paul Kwarteng.
+Part of the AI Governance Hub by Boakye-20.
